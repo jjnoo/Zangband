@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/08/08 11:07:29 $ */
+/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/08/01 13:01:57 $ */
 /* File: z-term.c */
 
 /*

@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:51:18 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/09/21 21:35:10 $ */
 /* File: util.c */
 
 /* Purpose: Angband utilities -BEN- */
@@ -704,9 +704,6 @@ errr fd_seek(int fd, huge n)
 	p = lseek(fd, n, SEEK_SET);
 
 	/* Failure */
-	if (p < 0) return (1);
-
-	/* Failure */
 	if (p != n) return (1);
 
 	/* Success */
@@ -1316,7 +1313,8 @@ errr macro_add(cptr pat, cptr act)
 	return (0);
 }
 
-
+/* This is never used. */
+#if 0
 
 /*
  * Initialize the "macro" package
@@ -1333,6 +1331,7 @@ errr macro_init(void)
 	return (0);
 }
 
+#endif /* 0 */
 
 /*
  * Local "need flush" variable
@@ -2022,11 +2021,28 @@ cptr message_str(int age)
 }
 
 
+/*
+ * Recall the "color" of a saved message
+ */
+byte message_color(int age)
+{
+	s16b x;
+
+	/* Forgotten messages have no special color */
+	if ((age < 0) || (age >= message_num())) return (TERM_WHITE);
+
+	/* Get the "logical" index */
+	x = (message__next + MESSAGE_MAX - (age + 1)) % MESSAGE_MAX;
+
+	/* Return the message color */
+	return (message__color[x]);
+}
+
 
 /*
  * Add a new message, with great efficiency
  */
-void message_add(cptr str)
+void message_add(cptr str, byte attr)
 {
 	int i, k, x, m, n;
 
@@ -2151,6 +2167,9 @@ void message_add(cptr str)
 		/* Assign the starting address */
 		message__ptr[x] = message__ptr[i];
 
+		/* Store the color */
+		message__color[x] = attr;
+
 		/* Success */
 		return;
 	}
@@ -2250,6 +2269,9 @@ void message_add(cptr str)
 
 	/* Advance the "head" pointer */
 	message__head += n + 1;
+
+	/* Store the color */
+	message__color[x] = attr;
 }
 
 
@@ -2307,7 +2329,7 @@ static void msg_flush(int x)
  * XXX XXX XXX Note that "msg_print(NULL)" will clear the top line
  * even if no messages are pending.  This is probably a hack.
  */
-void msg_print(cptr msg)
+void msg_print_color(byte attr, cptr msg)
 {
 	static int p = 0;
 
@@ -2317,6 +2339,9 @@ void msg_print(cptr msg)
 
 	char buf[1024];
 
+
+	/* Hack -- fake monochrome */
+	if (!use_color) attr = TERM_WHITE;
 
 	/* Hack -- Reset */
 	if (!msg_flag) p = 0;
@@ -2346,7 +2371,7 @@ void msg_print(cptr msg)
 
 
 	/* Memorize the message */
-	if (character_generated) message_add(msg);
+	if (character_generated) message_add(msg, attr);
 
 
 	/* Copy it */
@@ -2379,13 +2404,13 @@ void msg_print(cptr msg)
 		t[split] = '\0';
 
 		/* Display part of the message */
-		Term_putstr(0, 0, split, TERM_WHITE, t);
+		Term_putstr(0, 0, split, attr, t);
 
 		/* Flush it */
 		msg_flush(split + 1);
 
 		/* Memorize the piece */
-		/* if (character_generated) message_add(t); */
+		/* if (character_generated) message_add(t, attr); */
 
 		/* Restore the split character */
 		t[split] = oops;
@@ -2399,10 +2424,10 @@ void msg_print(cptr msg)
 
 
 	/* Display the tail of the message */
-	Term_putstr(p, 0, n, TERM_WHITE, t);
+	Term_putstr(p, 0, n, attr, t);
 
 	/* Memorize the tail */
-	/* if (character_generated) message_add(t); */
+	/* if (character_generated) message_add(t, attr); */
 
 	/* Window stuff */
 	p_ptr->window |= (PW_MESSAGE);
@@ -2415,6 +2440,12 @@ void msg_print(cptr msg)
 
 	/* Optional refresh */
 	if (fresh_message) Term_fresh();
+}
+
+
+void msg_print(cptr msg)
+{
+	msg_print_color(TERM_WHITE, msg);
 }
 
 
@@ -2482,6 +2513,29 @@ void msg_format(cptr fmt, ...)
 	msg_print(buf);
 }
 
+
+
+/*
+ * Display a formatted message, using "vstrnfmt()" and "msg_print()".
+ */
+void msg_format_color(byte attr, cptr fmt, ...)
+{
+	va_list vp;
+
+	char buf[1024];
+
+	/* Begin the Varargs Stuff */
+	va_start(vp, fmt);
+
+	/* Format the args, save the length */
+	(void)vstrnfmt(buf, 1024, fmt, vp);
+
+	/* End the Varargs Stuff */
+	va_end(vp);
+
+	/* Display */
+	msg_print_color(attr, buf);
+}
 
 
 /*
@@ -2911,8 +2965,6 @@ s16b get_quantity(cptr prompt, int max)
 		return (amt);
 	}
 
-#ifdef ALLOW_REPEAT /* TNB */
-
 	/* Get the item index */
 	if ((max != 1) && repeat_pull(&amt))
 	{
@@ -2925,8 +2977,6 @@ s16b get_quantity(cptr prompt, int max)
 		/* Use it */
 		return (amt);
 	}
-
-#endif /* ALLOW_REPEAT -- TNB */
 
 	/* Build a prompt if needed */
 	if (!prompt)
@@ -2960,11 +3010,7 @@ s16b get_quantity(cptr prompt, int max)
 	/* Enforce the minimum */
 	if (amt < 0) amt = 0;
 
-#ifdef ALLOW_REPEAT /* TNB */
-
 	if (amt) repeat_push(amt);
-
-#endif /* ALLOW_REPEAT -- TNB */
 
 	/* Return the result */
 	return (amt);
@@ -3410,8 +3456,6 @@ int get_keymap_dir(char ch)
 }
 
 
-#ifdef ALLOW_REPEAT /* TNB */
-
 #define REPEAT_MAX		20
 
 /* Number of chars saved */
@@ -3487,11 +3531,9 @@ void repeat_check(void)
 	}
 }
 
-#endif /* ALLOW_REPEAT -- TNB */
 
 
 #ifdef SORT_R_INFO
-
 
 /*
  * Array size for which InsertionSort
@@ -3620,6 +3662,7 @@ void tag_sort(tag_type elements[], int number)
 
 #endif /* SORT_R_INFO */
 
+
 #ifdef SUPPORT_GAMMA
 
 /* Table of gamma values */
@@ -3647,49 +3690,48 @@ static s16b gamma_helper[256] =
 };
 
 
-/* 
+/*
  * Build the gamma table so that floating point isn't needed.
- * 
+ *
  * Note gamma goes from 0->256.  The old value of 100 is now 128.
  */
 void build_gamma_table(int gamma)
 {
 	int i, n;
-	
+
 	/*
 	 * value is the current sum.
 	 * diff is the new term to add to the series.
 	 */
 	long value, diff;
-	
+
 	/* Hack - convergence is bad in these cases. */
 	gamma_table[0] = 0;
 	gamma_table[255] = 255;
-	
+
 	for (i = 1; i < 255; i++)
 	{
-		/* 
+		/*
 		 * Initialise the Taylor series
 		 *
 		 * value and diff have been scaled by 256
 		 */
-		
+
 		n = 1;
 		value = 256 * 256;
 		diff = ((long)gamma_helper[i]) * (gamma - 256);
-		
+
 		while (diff)
 		{
 			value += diff;
 			n++;
-			
-			
+
 			/*
 			 * Use the following identiy to calculate the gamma table.
 			 * exp(x) = 1 + x + x^2/2 + x^3/(2*3) + x^4/(2*3*4) +...
 			 *
 			 * n is the current term number.
-			 * 
+			 *
 			 * The gamma_helper array contains a table of
 			 * ln(x/256) * 256
 			 * This is used because a^b = exp(b*ln(a))
@@ -3706,8 +3748,8 @@ void build_gamma_table(int gamma)
 			 */
 			diff = (((diff / 256) * gamma_helper[i]) * (gamma - 256)) / (256 * n);
 		}
-		
-		/* 
+
+		/*
 		 * Store the value in the table so that the
 		 * floating point pow function isn't needed .
 		 */

@@ -1,4 +1,4 @@
-# CVS: Last edit by $Author: rr9 $ on $Date: 2000/05/18 17:28:42 $
+# CVS: Last edit by $Author: sfuerst $ on $Date: 2000/10/04 09:11:05 $
 ##### Special attr/char values #####
 
 
@@ -2906,6 +2906,22 @@ R:868:0xC4:0x9B
 # Boadile
 R:869:0xC4:0x9C
 
+R:870:0xC5:0x80
+
+R:871:0xC5:0x81
+R:872:0xC5:0x82
+R:873:0xC5:0x83
+R:874:0xC5:0x84
+R:875:0xC5:0x85
+
+R:876:0xC5:0x86
+R:877:0xC5:0x87
+R:878:0xC5:0x88
+R:879:0xC5:0x89
+R:880:0xC5:0x8A
+
+R:881:0xC5:0x8B
+
 # Anti-magic hound
 R:882:0xC4:0x9D
 
@@ -2918,8 +2934,8 @@ R:884:0xC4:0x9F
 
 # Feature attr/char definitions
 
-# nothing
-F:0:0x81:0x80
+# nothing  (Commented out for speedup.  Drawing a space is quicker.)
+#F:0:0x81:0x80
 
 # open floor
 F:1:0x80:0x80
@@ -2941,6 +2957,33 @@ F:6:0x81:0x9C
 
 # down staircase
 F:7:0x81:0x9E
+
+#N:8:sand
+F:8:0xCF:0x8E
+
+#N:9:salt
+#G:.:W
+
+#N:10:wet mud
+F:10:0xCF:0x8C
+
+#N:11:dry mud
+F:11:0xCF:0x8D
+
+#N:12:tiled floor
+#G:.:r
+
+#N:13:wooden floor
+#G:.:s
+
+#N:14:pebbles
+F:14:0xCF:0x90
+
+#N:15:solidified lava
+#G:::D
+
+
+
 
 # trap door
 F:16:0xA2:0x97
@@ -3156,7 +3199,7 @@ F:85:0xCB:0x89
 F:86:0xCB:0x88
 
 # Dark pit
-F:87:0xCB:0x83
+F:87:0xCF:0x80
 
 # Dirt
 F:88:0xCB:0x84
@@ -3164,11 +3207,91 @@ F:88:0xCB:0x84
 # Grass
 F:89:0xCB:0x85
 
+#N:90:compact rune
+#G:^:D
+
+#N:91:invisible wall
+#G:.:w
+
+#N:92:very deep water
+F:92:0xCB:0x80
+
+#N:93:deep acid
+#G:~:g
+
+#N:94:shallow acid
+#G:~:G
+
+#N:95:submerged tree
+F:95:0xCF:0x87
+
 # Tree
 F:96:0xCB:0x86
 
 # Mountain
 F:97:0xCB:0x87
+
+# N:98:snow covered rock face
+F:98:0xD0:0x80
+
+# N:99:boulder
+#G:::y
+
+#N:100:pine tree
+F:100:0xCF:0x82
+
+#N:101:snow covered tree
+F:101:0xCF:0x86
+
+#N:102:obelisk
+#G:;:b
+
+#N:103:pillar
+#G:#:w
+
+#N:112:stone fence
+#G:::b
+
+#N:113:well
+#G:~:v
+
+#N:114:fountain
+#G:~:U
+
+#N:115:jungle
+F:115:0xCF:0x84
+
+#N:128:bush
+F:128:0xCF:0x88
+
+#N:129:dead bush
+F:129:0xCF:0x89
+
+#N:130:long grass
+F:130:0xCF:0x8B
+
+#rock on general terrain
+#N:131:rock
+F:131:0xD1:0x81
+
+#rock on snow
+F:132:0xD0:0x81
+
+
+# dead tree on general terrain
+F:133:0xCF:0x85
+
+# dead tree on snow
+F:134:0xD0:0x85
+
+#N:135:snow
+F:135:0xCF:0x81
+
+#N:136:thick swamp
+#G:;:g
+
+#N:137:swamp
+F:137:0xCF:0x92
 
 
 # Object attr/char definitions
@@ -4386,7 +4509,7 @@ K:403:0x89:0x81
 K:404:0x89:0x80
 
 # Multi-Hued Dragon Scale Mail~
-K:405:0x89:0x82
+K:405:0xCE:0x8F
 
 # Pseudo Dragon Scale Mail~
 K:406:0xBB:0x9C
@@ -4787,6 +4910,108 @@ K:579:0xB4:0x8C
 
 # T-shirt
 K:580:0xB4:0x8D
+
+
+# Fields are initialised here.  (Note that some don't need tiles.)
+
+# Invisible Wall
+# no tile.
+
+# Glyph of warding.
+T:2:0xA2:0x88
+
+# Explosive rune.
+T:3:0xA2:0x87
+
+# Corpse
+T:4:0xB4:0x8B
+
+# Skeleton
+T:5:0xB4:0x8B
+
+# Trapdoor
+T:6:0xA2/0x97
+
+# Pit
+T:7:0xA2:0x96
+
+# Spiked Pit
+T:8:0xA2:0x96
+
+# Poison Pit
+T:9:0xA2:0x96
+
+# Evil Rune
+T:10:0xA2:0x8B
+
+# Strange Rune
+T:11:0xA2:0x8A
+
+# Discoloured Spot
+T:12:0x8A:0x9B
+
+# Discoloured Spot
+T:13:0x8A:0x9B
+
+# Gas Trap
+T:14:0xA2:0x8F
+
+# Compact Rune
+T:15:0xA2/0x88
+
+# Dart Trap
+T:16:0x82/0x9E
+
+# Dart Trap
+T:17:0x82:0x9E
+
+# Twisted Rune
+T:18:0xA2/0x89
+
+# Geometric Rune
+T:19:0xA2/0x8C
+
+# Glowing Rune
+T:20:0xA2/0x8D
+
+# Jagged Rune
+T:21:0xA2/0x8E
+
+# Fractured Rune
+T:22:0xA2/0x90
+
+# Faded Rune
+T:23:0xA2/0x91
+
+# Flashing Rune
+T:24:0xA2/0x92
+
+# Weird Rune
+T:25:0xA2/0x91
+
+# Shimmering Rune
+T:26:0xA2/0x8D
+
+# Smelly Rune
+T:27:0xA2/0x90
+
+# Intricate Rune
+T:28:0xA2/0x89
+
+# Bright Rune
+T:29:0xA2/0x8D
+
+# Blurry Rune
+T:30:0xA2/0x91
+
+# Spiral Rune
+T:31:0xA2/0x89
+
+# Locked Door
+T:32:0x81:0x8B
+
+# Jammed Door
+T:33:0x81:0x8B
 
 # Load the special player pictures
 %:xtra-xxx.prf

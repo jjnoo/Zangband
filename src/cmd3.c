@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/05/18 17:28:53 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/08/12 11:20:50 $ */
 /* File: cmd3.c */
 
 /* Purpose: Inventory commands */
@@ -22,16 +22,8 @@ void do_cmd_inven(void)
 {
 	char out_val[160];
 
-
 	/* Note that we are in "inventory" mode */
-	command_wrk = FALSE;
-
-#ifdef ALLOW_EASY_FLOOR
-
-	/* Note that we are in "inventory" mode */
-	if (easy_floor) command_wrk = (USE_INVEN);
-
-#endif /* ALLOW_EASY_FLOOR */
+	command_wrk = (USE_INVEN);
 
 	/* Save screen */
 	screen_save();
@@ -83,16 +75,8 @@ void do_cmd_equip(void)
 {
 	char out_val[160];
 
-
 	/* Note that we are in "equipment" mode */
-	command_wrk = TRUE;
-
-#ifdef ALLOW_EASY_FLOOR
-
-	/* Note that we are in "equipment" mode */
-	if (easy_floor) command_wrk = (USE_EQUIP);
-
-#endif /* ALLOW_EASY_FLOOR  */
+	command_wrk = (USE_EQUIP);
 
 	/* Save the screen */
 	screen_save();
@@ -275,7 +259,7 @@ void do_cmd_wield(void)
 
 	/* Forget stack */
 	o_ptr->next_o_idx = 0;
-	
+
 	/* Forget location */
 	o_ptr->iy = o_ptr->ix = 0;
 
@@ -1065,12 +1049,18 @@ void do_cmd_look(void)
  */
 void do_cmd_locate(void)
 {
-	int		dir, y1, x1, y2, x2;
+	int dir, y1, x1, y2, x2;
+	int wid, hgt;
+	char tmp_val[80];
+	char out_val[160];
 
-	char	tmp_val[80];
 
-	char	out_val[160];
-
+	/* Get size */
+	Term_get_size(&wid, &hgt);
+	
+	/* Offset */
+	wid -= COL_MAP + 1;
+	hgt -= ROW_MAP + 1;
 
 	/* Start at current panel */
 	y2 = y1 = panel_row_min;
@@ -1094,8 +1084,8 @@ void do_cmd_locate(void)
 		/* Prepare to ask which way to look */
 		sprintf(out_val,
 		        "Map sector [%d(%02d),%d(%02d)], which is%s your sector.  Direction?",
-		        y2 / (SCREEN_HGT / 2), y2 % (SCREEN_HGT / 2),
-		        x2 / (SCREEN_WID / 2), x2 % (SCREEN_WID / 2), tmp_val);
+		        y2 / (hgt / 2), y2 % (hgt / 2),
+		        x2 / (wid / 2), x2 % (wid / 2), tmp_val);
 
 		/* Assume no direction */
 		dir = 0;
@@ -1156,7 +1146,7 @@ static cptr ident_info[] =
 	"\":An amulet (or necklace)",
 	"#:A wall (or secret door)",
 	"$:Treasure (gold or gems)",
-	"%:A vein (magma or quartz)",
+	"%:Trees",
 	"&:A chest",
 	"':An open door",
 	"(:Soft armor",
@@ -1177,8 +1167,8 @@ static cptr ident_info[] =
 	"7:Entrance to Black Market",
 	"8:Entrance to your home",
 	"9:Entrance to the bookstore",
-	"::Rubble",
-	";:A glyph of warding / explosive rune",
+	"::Rubble / Rock",
+	";:Swamp / Rune",
 	"<:An up staircase",
 	"=:A ring",
 	">:A down staircase",
@@ -1227,7 +1217,7 @@ static cptr ident_info[] =
 	"i:Icky Thing",
 	"j:Jelly",
 	"k:Kobold",
-	"l:Louse",
+	"l:Aquatic monster",
 	"m:Mold",
 	"n:Naga",
 	"o:Orc",
@@ -1245,7 +1235,7 @@ static cptr ident_info[] =
 	"{:A missile (arrow/bolt/shot)",
 	"|:An edged weapon (sword/dagger/etc)",
 	"}:A launcher (bow/crossbow/sling)",
-	"~:Aquatic monster (or miscellaneous item)",
+	"~:Fluid terrain (or miscellaneous item)",
 	NULL
 };
 
@@ -1483,6 +1473,7 @@ void do_cmd_query_symbol(void)
 		if (all || (r_ptr->d_char == sym)) who[n++] = i;
 	}
 
+	/* Nothing to recall */
 	if (!n)
 	{
 		/* XXX XXX Free the "who" array */
@@ -1524,6 +1515,7 @@ void do_cmd_query_symbol(void)
 
 		return;
 	}
+
 
 	/* Sort if needed */
 	if (why == 4)

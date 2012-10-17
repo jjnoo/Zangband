@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:50:40 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/09/11 11:21:04 $ */
 /* File: mutation.c */
 
 /* Purpose: Mutation effects (and racial powers) */
@@ -1838,7 +1838,7 @@ void mutation_power_aux(u32b power)
 			{
 				int x, y, dummy;
 				cave_type *c_ptr;
-				
+
 				/* Handle player fear */
 				if (p_ptr->afraid)
 				{
@@ -1848,10 +1848,14 @@ void mutation_power_aux(u32b power)
 				}
 
 				/* Only works on adjacent monsters */
-				if (!get_rep_dir(&dir)) break;
+				if (!get_rep_dir(&dir,FALSE)) return;
 				y = py + ddy[dir];
 				x = px + ddx[dir];
-				c_ptr = &cave[y][x];
+
+				/* paranoia */
+				if (!in_bounds2(y, x)) return;
+
+				c_ptr = area(y, x);
 
 				if (!(c_ptr->m_idx))
 				{
@@ -1863,18 +1867,13 @@ void mutation_power_aux(u32b power)
 
 				dummy = lvl * 2;
 
-				if (drain_life(dir, dummy))
+				if (drain_gain_life(dir, dummy))
 				{
-					if (p_ptr->food < PY_FOOD_FULL)
-						/* No heal if we are "full" */
-						(void)hp_player(dummy);
-					else
-						msg_print("You were not hungry.");
-						/* Gain nutritional sustenance: 150/hp drained */
-						/* A Food ration gives 5000 food points (by contrast) */
-						/* Don't ever get more than "Full" this way */
-						/* But if we ARE Gorged,  it won't cure us */
-						dummy = p_ptr->food + MIN(5000, 100 * dummy);
+					/* Gain nutritional sustenance: 150/hp drained */
+					/* A Food ration gives 5000 food points (by contrast) */
+					/* Don't ever get more than "Full" this way */
+					/* But if we ARE Gorged,  it won't cure us */
+					dummy = p_ptr->food + MIN(5000, 100 * dummy);
 					if (p_ptr->food < PY_FOOD_MAX)   /* Not gorged already */
 						(void)set_food(dummy >= PY_FOOD_MAX ? PY_FOOD_MAX-1 : dummy);
 				}
@@ -1909,12 +1908,17 @@ void mutation_power_aux(u32b power)
 			{
 				int x, y, ox, oy;
 				cave_type *c_ptr;
-
-				if (!get_rep_dir(&dir)) break;
+				
+				if (!get_rep_dir(&dir,FALSE)) break;
 				y = py + ddy[dir];
 				x = px + ddx[dir];
-				c_ptr = &cave[y][x];
-				if (cave_floor_bold(y, x))
+
+				/* paranoia */
+				if (!in_bounds2(y, x)) return;
+
+				c_ptr = area(y, x);
+
+				if (cave_floor_grid(c_ptr))
 				{
 					msg_print("You bite into thin air!");
 					break;
@@ -1938,7 +1942,7 @@ void mutation_power_aux(u32b power)
 				}
 				else
 				{
-					if ((c_ptr->feat >= FEAT_DOOR_HEAD) &&
+					if ((c_ptr->feat >= FEAT_CLOSED) &&
 						(c_ptr->feat <= FEAT_RUBBLE))
 					{
 						(void)set_food(p_ptr->food + 3000);
@@ -1956,20 +1960,39 @@ void mutation_power_aux(u32b power)
 				}
 				(void)wall_to_mud(dir);
 
+				/* Save old location */
 				oy = py;
 				ox = px;
 
+				/* Process fields under the player. */
+				field_hook(&area(py, px)->fld_idx,
+					 FIELD_ACT_PLAYER_LEAVE, NULL);
+
+				/* Move the player */
 				py = y;
 				px = x;
+				
+				if (!dun_level)
+				{
+					/* Scroll wilderness */
+					p_ptr->wilderness_x = px;
+					p_ptr->wilderness_y = py;
+					move_wild();
+				}
+		
+				/* Process fields under the player. */
+				field_hook(&area(py, px)->fld_idx,
+			 		FIELD_ACT_PLAYER_ENTER, NULL);
 
 				lite_spot(py, px);
 				lite_spot(oy, ox);
 
 				verify_panel();
 
-				p_ptr->update |= (PU_VIEW | PU_LITE | PU_FLOW);
+				p_ptr->update |= (PU_VIEW | PU_FLOW | PU_MON_LITE);
 				p_ptr->update |= (PU_DISTANCE);
 				p_ptr->window |= (PW_OVERHEAD | PW_DUNGEON);
+				
 			}
 			break;
 
@@ -2171,10 +2194,14 @@ void mutation_power_aux(u32b power)
 			{
 				int x, y;
 
-				if (!get_rep_dir(&dir)) return;
+				if (!get_rep_dir(&dir,FALSE)) return;
 				y = py + ddy[dir];
 				x = px + ddx[dir];
-				if (cave[y][x].m_idx)
+
+				/* paranoia */
+				if (!in_bounds2(y, x)) return;
+
+				if (area(y, x)->m_idx)
 				{
 					py_attack(y, x);
 					teleport_player(30);
@@ -2242,10 +2269,14 @@ void mutation_power_aux(u32b power)
 				monster_type *m_ptr;
 				monster_race *r_ptr;
 
-				if (!get_rep_dir(&dir)) return;
+				if (!get_rep_dir(&dir,FALSE)) return;
 				y = py + ddy[dir];
 				x = px + ddx[dir];
-				c_ptr = &cave[y][x];
+
+				/* paranoia */
+				if (!in_bounds2(y, x)) return;
+
+				c_ptr = area(y, x);
 
 				if (!c_ptr->m_idx)
 				{
@@ -2277,10 +2308,14 @@ void mutation_power_aux(u32b power)
 				int x, y;
 				cave_type *c_ptr;
 
-				if (!get_rep_dir(&dir)) return;
+				if (!get_rep_dir(&dir,FALSE)) return;
 				y = py + ddy[dir];
 				x = px + ddx[dir];
-				c_ptr = &cave[y][x];
+
+				/* paranoia */
+				if (!in_bounds2(y, x)) return;
+
+				c_ptr = area(y, x);
 
 				if (!c_ptr->m_idx)
 				{
@@ -2295,7 +2330,7 @@ void mutation_power_aux(u32b power)
 		case 3: /* MUT1_LAUNCHER */
 			if (racial_aux(1, lvl, A_STR, 6))
 			{
-				/* Gives a multiplier of 2 at first, up to 5 at 48th */
+				/* Gives a multiplier of 2 at first, up to 3 at level 30 */
 				do_cmd_throw_aux(2 + lvl / 30);
 			}
 			break;

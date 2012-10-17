@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:49:37 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/09/20 23:38:38 $ */
 /* File: flavor.c */
 
 /* Purpose: Object flavor code */
@@ -85,7 +85,7 @@ static cptr amulet_adj[MAX_AMULETS] =
 	"Amber", "Driftwood", "Coral", "Agate", "Ivory",
 	"Obsidian", "Bone", "Brass", "Bronze", "Pewter",
 	"Tortoise Shell", "Golden", "Azure", "Crystal", "Silver",
-	"Copper", "Swastika"
+	"Copper", "Rosetted"
 };
 
 static byte amulet_col[MAX_AMULETS] =
@@ -848,7 +848,7 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 
 	object_type	*bow_ptr;
 
-	/* describe what type of ammo item is. (0=none)*/
+	/* describe what type of ammo item is. (0=none) */
 	byte		ammotype = 0;
 
 	/* damage dice, damage sides, damage bonus, energy */
@@ -912,24 +912,6 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 				modstr = t;
 			}
 
-			break;
-		}
-
-		/* Corpses */
-		case TV_CORPSE:
-		{
-			modstr = r_name + r_ptr->name;
-
-			if (r_ptr->flags1 & RF1_UNIQUE)
-			{
-				sprintf(tmp_val2, "%s %s", basenm, "of #");
-			}
-			else
-			{
-				sprintf(tmp_val2, "& # %s", basenm + 2);
-			}
-
-			basenm = tmp_val2;
 			break;
 		}
 
@@ -1201,12 +1183,6 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 
 		/* Hack -- The only one of its kind */
 		else if (known && (artifact_p(o_ptr) || o_ptr->art_name))
-		{
-			t = object_desc_str(t, "The ");
-		}
-
-		/* Unique corpses are unique */
-		else if ((o_ptr->tval == TV_CORPSE) && (r_ptr->flags1 & RF1_UNIQUE))
 		{
 			t = object_desc_str(t, "The ");
 		}
@@ -1582,7 +1558,7 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 
 	bow_ptr = &inventory[INVEN_BOW];
 
-	/* if have a firing weapon + ammo matches bow*/
+	/* if have a firing weapon + ammo matches bow */
 	if (bow_ptr->k_idx &&
 	    (((bow_ptr->sval == SV_SLING) && (ammotype == 1)) ||
 		 (((bow_ptr->sval == SV_SHORT_BOW) ||
@@ -1590,7 +1566,7 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 	     (((bow_ptr->sval == SV_LIGHT_XBOW) ||
 	     (bow_ptr->sval == SV_HEAVY_XBOW)) && (ammotype == 3))))
 	{
-		/* See if the bow is "known" - then set damage bonus*/
+		/* See if the bow is "known" - then set damage bonus */
 		if (object_known_p(bow_ptr))
 		{
 			db = bow_ptr->to_d;
@@ -1702,11 +1678,11 @@ void object_desc(char *buf, object_type *o_ptr, int pref, int mode)
 		}
 		else
 		{
-			/* calc effects of energy */
-			avgdam *= p_ptr->num_fire;
+			/* calc effects of energy  x2 */
+			avgdam *= (1 + p_ptr->num_fire);
 
 			/* rescale */
-			avgdam /= 2 * energy_use;
+			avgdam /= 4 * energy_use;
 			t = object_desc_num(t, avgdam);
 		}
 

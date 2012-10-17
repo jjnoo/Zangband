@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/05/18 17:29:11 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/08/31 10:43:06 $ */
 /* File: object1.c */
 
 /* Purpose: Object code, part 1 */
@@ -61,20 +61,17 @@ void reset_visuals(void)
 		r_ptr->x_attr = r_ptr->d_attr;
 		r_ptr->x_char = r_ptr->d_char;
 	}
-
-#if 0
-
-	/* Extract attr/chars for equippy items (by tval) */
-	for (i = 0; i < 128; i++)
+	
+	/* Extract default attr/char code for fields */
+	for (i = 0; i < max_t_idx; i++)
 	{
-		/* Extract a default attr */
-		tval_to_attr[i] = default_tval_to_attr(i);
+		field_thaum *t_ptr = &t_info[i];
 
-		/* Extract a default char */
-		tval_to_char[i] = default_tval_to_char(i);
+		/* Default attr/char */
+		t_ptr->f_attr = t_ptr->d_attr;
+		t_ptr->f_char = t_ptr->d_char;
 	}
 
-#endif
 
 	if (use_graphics)
 	{
@@ -228,7 +225,7 @@ void object_flags_known(object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
 
 	/* Show modifications to stats */
 	(*f1) |= (o_ptr->art_flags1 &
-		(TR1_STR | TR1_INT | TR1_WIS | TR1_DEX | TR1_CON | TR1_CHR ));
+		(TR1_STR | TR1_INT | TR1_WIS | TR1_DEX | TR1_CON | TR1_CHR));
 
 
 #ifdef SPOIL_ARTIFACTS
@@ -406,71 +403,71 @@ cptr item_activation(object_type *o_ptr)
 			}
 			case ACT_BO_MISS_1:
 			{
-				return "magic missile (2d6) every 2 turns";
+				return "magic missile (3d6) every 2 turns";
 			}
 			case ACT_BA_POIS_1:
 			{
-				return "stinking cloud (12), rad. 3, every 4+d4 turns";
+				return "stinking cloud (25), rad. 3, every 4+d4 turns";
 			}
 			case ACT_BO_ELEC_1:
 			{
-				return "lightning bolt (4d8) every 6+d6 turns";
+				return "lightning bolt (6d8) every 6+d6 turns";
 			}
 			case ACT_BO_ACID_1:
 			{
-				return "acid bolt (5d8) every 5+d5 turns";
+				return "acid bolt (8d8) every 5+d5 turns";
 			}
 			case ACT_BO_COLD_1:
 			{
-				return "frost bolt (6d8) every 7+d7 turns";
+				return "frost bolt (9d8) every 7+d7 turns";
 			}
 			case ACT_BO_FIRE_1:
 			{
-				return "fire bolt (9d8) every 8+d8 turns";
+				return "fire bolt (11d8) every 8+d8 turns";
 			}
 			case ACT_BA_COLD_1:
 			{
-				return "ball of cold (48) every 400 turns";
+				return "ball of cold (100) every 400 turns";
 			}
 			case ACT_BA_FIRE_1:
 			{
-				return "ball of fire (72) every 400 turns";
+				return "ball of fire (150) every 400 turns";
 			}
 			case ACT_DRAIN_1:
 			{
-				return "drain life (100) every 100+d100 turns";
+				return "drain life (200) every 100+d100 turns";
 			}
 			case ACT_BA_COLD_2:
 			{
-				return "ball of cold (100) every 300 turns";
+				return "ball of cold (200) every 300 turns";
 			}
 			case ACT_BA_ELEC_2:
 			{
-				return "ball of lightning (100) every 500 turns";
+				return "ball of lightning (200) every 500 turns";
 			}
 			case ACT_DRAIN_2:
 			{
-				return "drain life (120) every 400 turns";
+				return "drain life (250) every 400 turns";
 			}
 			case ACT_VAMPIRE_1:
 			{
-				return "vampiric drain (3*50) every 400 turns";
+				return "vampiric drain (3*100) every 400 turns";
 			}
 			case ACT_BO_MISS_2:
 			{
-				return "arrows (150) every 90+d90 turns";
+				return "arrows (250) every 90+d90 turns";
 			}
 			case ACT_BA_FIRE_2:
 			{
-				return "fire ball (120) every 225+d225 turns";
+				return "fire ball (250) every 225+d225 turns";
 			}
 			case ACT_BA_COLD_3:
 			{
-				return "ball of cold (200) every 325+d325 turns";
+				return "ball of cold (400) every 325+d325 turns";
 			}
 			case ACT_BA_ELEC_3:
 			{
-				return "ball of lightning (250) every 425+d425 turns";
+				return "ball of lightning (500) every 425+d425 turns";
 			}
 			case ACT_WHIRLWIND:
 			{
@@ -478,7 +475,7 @@ cptr item_activation(object_type *o_ptr)
 			}
 			case ACT_VAMPIRE_2:
 			{
-				return "vampiric drain (3*100) every 400 turns";
+				return "vampiric drain (3*200) every 400 turns";
 			}
 			case ACT_CALL_CHAOS:
 			{
@@ -486,7 +483,7 @@ cptr item_activation(object_type *o_ptr)
 			}
 			case ACT_ROCKET:
 			{
-				return "launch rocket (120+level) every 400 turns";
+				return "launch rocket (300+level) every 400 turns";
 			}
 			case ACT_DISP_EVIL:
 			{
@@ -494,7 +491,7 @@ cptr item_activation(object_type *o_ptr)
 			}
 			case ACT_BA_MISS_3:
 			{
-				return "elemental breath (300) every 500 turns";
+				return "elemental breath (500) every 500 turns";
 			}
 			case ACT_DISP_GOOD:
 			{
@@ -578,7 +575,7 @@ cptr item_activation(object_type *o_ptr)
 			}
 			case ACT_CURE_MW:
 			{
-				return "heal 4d8 & wounds every 3+d3 turns";
+				return "heal 75 hp & wounds every 3+d3 turns";
 			}
 			case ACT_CURE_POISON:
 			{
@@ -708,23 +705,23 @@ cptr item_activation(object_type *o_ptr)
 	{
 		case ART_NARTHANC:
 		{
-			return "fire bolt (9d8) every 8+d8 turns";
+			return "fire bolt (11d8) every 8+d8 turns";
 		}
 		case ART_NIMTHANC:
 		{
-			return "frost bolt (6d8) every 7+d7 turns";
+			return "frost bolt (8d8) every 7+d7 turns";
 		}
 		case ART_DETHANC:
 		{
-			return "lightning bolt (4d8) every 6+d6 turns";
+			return "lightning bolt (6d8) every 6+d6 turns";
 		}
 		case ART_RILIA:
 		{
-			return "stinking cloud (12) every 4+d4 turns";
+			return "stinking cloud (25) every 4+d4 turns";
 		}
 		case ART_BELANGIL:
 		{
-			return "frost ball (48) every 5+d5 turns";
+			return "frost ball (100) every 5+d5 turns";
 		}
 		case ART_DAL:
 		{
@@ -732,7 +729,7 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_RINGIL:
 		{
-			return "frost ball (100) every 300 turns";
+			return "frost ball (200) every 300 turns";
 		}
 		case ART_DAWN:
 		{
@@ -740,11 +737,11 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_ANDURIL:
 		{
-			return "fire ball (72) every 400 turns";
+			return "fire ball (150) every 400 turns";
 		}
 		case ART_FIRESTAR:
 		{
-			return "large fire ball (72) every 100 turns";
+			return "large fire ball (200) every 100 turns";
 		}
 		case ART_FEANOR:
 		{
@@ -752,11 +749,11 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_THEODEN:
 		{
-			return "drain life (120) every 400 turns";
+			return "drain life (200) every 400 turns";
 		}
 		case ART_TURMIL:
 		{
-			return "drain life (90) every 70 turns";
+			return "drain life (200) every 70 turns";
 		}
 		case ART_CASPANION:
 		{
@@ -784,7 +781,7 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_LOTHARANG:
 		{
-			return "cure wounds (4d7) every 3+d3 turns";
+			return "cure wounds (100) every 3+d3 turns";
 		}
 		case ART_BRAND:
 		{
@@ -796,7 +793,7 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_AEGLOS:
 		{
-			return "lightning ball (100) every 500 turns";
+			return "lightning ball (200) every 500 turns";
 		}
 		case ART_OROME:
 		{
@@ -832,7 +829,7 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_THINGOL:
 		{
-			return "recharge item I every 70 turns";
+			return "recharge item every 70 turns";
 		}
 		case ART_COLANNON:
 		{
@@ -844,27 +841,27 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_CAMMITHRIM:
 		{
-			return "magic missile (2d6) every 2 turns";
+			return "magic missile (3d6) every 2 turns";
 		}
 		case ART_PAURHACH:
 		{
-			return "fire bolt (9d8) every 8+d8 turns";
+			return "fire bolt (11d8) every 8+d8 turns";
 		}
 		case ART_CORWIN:
 		{
-			return "frost bolt (6d8) every 7+d7 turns";
+			return "frost bolt (8d8) every 7+d7 turns";
 		}
 		case ART_PAURAEGEN:
 		{
-			return "lightning bolt (4d8) every 6+d6 turns";
+			return "lightning bolt (6d8) every 6+d6 turns";
 		}
 		case ART_PAURNEN:
 		{
-			return "acid bolt (5d8) every 5+d5 turns";
+			return "acid bolt (8d8) every 5+d5 turns";
 		}
 		case ART_FINGOLFIN:
 		{
-			return "a magical arrow (150) every 90+d90 turns";
+			return "a magical arrow (250) every 90+d90 turns";
 		}
 		case ART_HOLHENNETH:
 		{
@@ -876,11 +873,11 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_RAZORBACK:
 		{
-			return "star ball (150) every 1000 turns";
+			return "star ball (1500) every 100 turns";
 		}
 		case ART_BLADETURNER:
 		{
-			return "breathe elements (300), berserk rage, bless, and resistance";
+			return "breathe elements (1500), berserk rage, bless, and resistance";
 		}
 		case ART_GALADRIEL:
 		{
@@ -904,7 +901,7 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_BARAHIR:
 		{
-			return "a strangling attack (100) every 100+d100 turns";
+			return "a strangling attack (200) every 100+d100 turns";
 		}
 		case ART_TULKAS:
 		{
@@ -912,15 +909,15 @@ cptr item_activation(object_type *o_ptr)
 		}
 		case ART_NARYA:
 		{
-			return "large fire ball (120) every 225+d225 turns";
+			return "large fire ball (250) every 225+d225 turns";
 		}
 		case ART_NENYA:
 		{
-			return "large frost ball (200) every 325+d325 turns";
+			return "large frost ball (400) every 325+d325 turns";
 		}
 		case ART_VILYA:
 		{
-			return "large lightning ball (250) every 425+d425 turns";
+			return "large lightning ball (500) every 425+d425 turns";
 		}
 		case ART_POWER:
 		{
@@ -961,55 +958,55 @@ cptr item_activation(object_type *o_ptr)
 	{
 		case SV_DRAGON_BLUE:
 		{
-			return "breathe lightning (100) every 450+d450 turns";
+			return "breathe lightning (500) every 50+d50 turns";
 		}
 		case SV_DRAGON_WHITE:
 		{
-			return "breathe frost (110) every 450+d450 turns";
+			return "breathe frost (550) every 50+d50 turns";
 		}
 		case SV_DRAGON_BLACK:
 		{
-			return "breathe acid (130) every 450+d450 turns";
+			return "breathe acid (650) every 50+d50 turns";
 		}
 		case SV_DRAGON_GREEN:
 		{
-			return "breathe poison gas (150) every 450+d450 turns";
+			return "breathe poison gas (750) every 50+d50 turns";
 		}
 		case SV_DRAGON_RED:
 		{
-			return "breathe fire (200) every 450+d450 turns";
+			return "breathe fire (1000) every 50+d50 turns";
 		}
 		case SV_DRAGON_MULTIHUED:
 		{
-			return "breathe multi-hued (250) every 225+d225 turns";
+			return "breathe multi-hued (1250) every 25+d25 turns";
 		}
 		case SV_DRAGON_BRONZE:
 		{
-			return "breathe confusion (120) every 450+d450 turns";
+			return "breathe confusion (600) every 50+d50 turns";
 		}
 		case SV_DRAGON_GOLD:
 		{
-			return "breathe sound (130) every 450+d450 turns";
+			return "breathe sound (650) every 50+d50 turns";
 		}
 		case SV_DRAGON_CHAOS:
 		{
-			return "breathe chaos/disenchant (220) every 300+d300 turns";
+			return "breathe chaos/disenchant (1100) every 30+d30 turns";
 		}
 		case SV_DRAGON_LAW:
 		{
-			return "breathe sound/shards (230) every 300+d300 turns";
+			return "breathe sound/shards (1150) every 30+d30 turns";
 		}
 		case SV_DRAGON_BALANCE:
 		{
-			return "breathe balance (250) every 300+d300 turns";
+			return "breathe balance (1250) every 30+d30 turns";
 		}
 		case SV_DRAGON_SHINING:
 		{
-			return "breathe light/darkness (200) every 300+d300 turns";
+			return "breathe light/darkness (1000) every 30+d30 turns";
 		}
 		case SV_DRAGON_POWER:
 		{
-			return "breathe the elements (300) every 300+d300 turns";
+			return "breathe the elements (1500) every 30+d30 turns";
 		}
 	}
 
@@ -1320,9 +1317,9 @@ bool identify_fully_aux(object_type *o_ptr)
 		info[i++] = "It provides resistance to disenchantment.";
 	}
 
-	if (f3 & (TR3_WRAITH))
+	if (f3 & (TR3_XXX7))
 	{
-		info[i++] = "It renders you incorporeal.";
+		info[i++] = "It renders you XXX7'ed.";
 	}
 	if (f3 & (TR3_FEATHER))
 	{
@@ -1719,7 +1716,7 @@ cptr describe_use(int i)
 
 /* Hack: Check if a spellbook is one of the realms we can use. -- TY */
 
-bool check_book_realm(const byte book_tval)
+static bool check_book_realm(const byte book_tval)
 {
 	return (REALM1_BOOK == book_tval || REALM2_BOOK == book_tval);
 }
@@ -1955,6 +1952,8 @@ void show_inven(void)
 	int             out_index[23];
 	byte            out_color[23];
 	char            out_desc[23][80];
+	byte		a;
+	char		c;
 
 
 	/* Starting column */
@@ -1970,7 +1969,7 @@ void show_inven(void)
 	if (show_weights) lim -= 9;
 
 	/* Require space for icon */
-	if (show_inven_graph) lim -= 2;
+	lim -= 2;
 
 	/* Find the "final" slot */
 	for (i = 0; i < INVEN_PACK; i++)
@@ -2017,7 +2016,7 @@ void show_inven(void)
 		if (show_weights) l += 9;
 
 		/* Account for icon if displayed */
-		if (show_inven_graph) l += 2;
+		l += 2;
 
 		/* Maintain the maximum length */
 		if (l > len) len = l;
@@ -2048,21 +2047,17 @@ void show_inven(void)
 		put_str(tmp_val, j + 1, col);
 
 		/* Display graphics for object, if desired */
-		if (show_inven_graph)
-		{
-			byte  a = object_attr(o_ptr);
-			char c = object_char(o_ptr);
+		a = object_attr(o_ptr);
+		c = object_char(o_ptr);
 
 #ifdef AMIGA
-			if (a & 0x80) a |= 0x40;
+		if (a & 0x80) a |= 0x40;
 #endif
 
-			Term_draw(col + 3, j + 1, a, c);
-		}
-
+		Term_draw(col + 3, j + 1, a, c);
 
 		/* Display the entry itself */
-		c_put_str(out_color[j], out_desc[j], j + 1, show_inven_graph ? (col + 5) : (col + 3));
+		c_put_str(out_color[j], out_desc[j], j + 1, (col + 5));
 
 		/* Display the weight if needed */
 		if (show_weights)
@@ -2095,6 +2090,8 @@ void show_equip(void)
 	int             out_index[23];
 	byte            out_color[23];
 	char            out_desc[23][80];
+	byte		a;
+	char		c;
 
 
 	/* Starting column */
@@ -2112,7 +2109,8 @@ void show_equip(void)
 	/* Require space for weight (if needed) */
 	if (show_weights) lim -= 9;
 
-	if (show_equip_graph) lim -= 2;
+	/* Old show_equip_graph option Perm. on. */
+	lim -= 2;
 
 	/* Scan the equipment list */
 	for (k = 0, i = INVEN_WIELD; i < INVEN_TOTAL; i++)
@@ -2149,7 +2147,8 @@ void show_equip(void)
 		/* Increase length for weight (if needed) */
 		if (show_weights) l += 9;
 
-		if (show_equip_graph) l += 2;
+		/* old show_equip_graph option perm. on. */
+		l += 2;
 
 		/* Maintain the max-length */
 		if (l > len) len = l;
@@ -2179,34 +2178,33 @@ void show_equip(void)
 		/* Clear the line with the (possibly indented) index */
 		put_str(tmp_val, j+1, col);
 
-		if (show_equip_graph)
-		{
-			byte a = object_attr(o_ptr);
-			char c = object_char(o_ptr);
+		/* Show_equip_graph perm. on. */
+		a = object_attr(o_ptr);
+		c = object_char(o_ptr);
 
 #ifdef AMIGA
-			if (a & 0x80) a |= 0x40;
+		if (a & 0x80) a |= 0x40;
 #endif
 
-			Term_draw(col + 3, j + 1, a, c);
-		}
+		Term_draw(col + 3, j + 1, a, c);
+
 
 		/* Use labels */
 		if (show_labels)
 		{
 			/* Mention the use */
 			(void)sprintf(tmp_val, "%-14s: ", mention_use(i));
-			put_str(tmp_val, j+1, show_equip_graph ? col + 5 : col + 3);
+			put_str(tmp_val, j+1, col + 5);
 
 			/* Display the entry itself */
-			c_put_str(out_color[j], out_desc[j], j+1, show_equip_graph ? col + 21 : col + 19);
+			c_put_str(out_color[j], out_desc[j], j+1, col + 21);
 		}
 
 		/* No labels */
 		else
 		{
 			/* Display the entry itself */
-			c_put_str(out_color[j], out_desc[j], j+1, show_equip_graph ? col + 5 : col + 3);
+			c_put_str(out_color[j], out_desc[j], j+1, col + 5);
 		}
 
 		/* Display the weight if needed */
@@ -2430,601 +2428,6 @@ static int get_tag(int *cp, char tag)
 }
 
 
-
-/*
- * Let the user select an item, save its "index"
- *
- * Return TRUE only if an acceptable item was chosen by the user.
- *
- * The selected item must satisfy the "item_tester_hook()" function,
- * if that hook is set, and the "item_tester_tval", if that value is set.
- *
- * All "item_tester" restrictions are cleared before this function returns.
- *
- * The user is allowed to choose acceptable items from the equipment,
- * inventory, or floor, respectively, if the proper flag was given,
- * and there are any acceptable items in that location.
- *
- * The equipment or inventory are displayed (even if no acceptable
- * items are in that location) if the proper flag was given.
- *
- * If there are no acceptable items available anywhere, and "str" is
- * not NULL, then it will be used as the text of a warning message
- * before the function returns.
- *
- * Note that the user must press "-" to specify the item on the floor,
- * and there is no way to "examine" the item on the floor, while the
- * use of "capital" letters will "examine" an inventory/equipment item,
- * and prompt for its use.
- *
- * If a legal item is selected from the inventory, we save it in "cp"
- * directly (0 to 35), and return TRUE.
- *
- * If a legal item is selected from the floor, we save it in "cp" as
- * a negative (-1 to -511), and return TRUE.
- *
- * If no item is available, we do nothing to "cp", and we display a
- * warning message, using "str" if available, and return FALSE.
- *
- * If no item is selected, we do nothing to "cp", and return FALSE.
- *
- * Global "p_ptr->command_new" is used when viewing the inventory or equipment
- * to allow the user to enter a command while viewing those screens, and
- * also to induce "auto-enter" of stores, and other such stuff.
- *
- * Global "p_ptr->command_see" may be set before calling this function to start
- * out in "browse" mode.  It is cleared before this function returns.
- *
- * Global "p_ptr->command_wrk" is used to choose between equip/inven listings.
- * If it is TRUE then we are viewing inventory, else equipment.
- *
- * We always erase the prompt when we are done, leaving a blank line,
- * or a warning message, if appropriate, if no items are available.
- */
-bool get_item(int *cp, cptr pmt, cptr str, int mode)
-{
-	s16b this_o_idx, next_o_idx = 0;
-
-	char n1, n2, which = ' ';
-
-	int j, k, i1, i2, e1, e2;
-
-	bool done, item;
-
-	bool oops = FALSE;
-
-	bool equip = FALSE;
-	bool inven = FALSE;
-	bool floor = FALSE;
-
-	bool allow_floor = FALSE;
-
-	bool toggle = FALSE;
-
-	char tmp_val[160];
-	char out_val[160];
-
-
-#ifdef ALLOW_EASY_FLOOR /* TNB */
-
-	if (easy_floor) return get_item_floor(cp, pmt, str, mode);
-
-#endif /* ALLOW_EASY_FLOOR -- TNB */
-
-	/* Extract args */
-	if (mode & (USE_EQUIP)) equip = TRUE;
-	if (mode & (USE_INVEN)) inven = TRUE;
-	if (mode & (USE_FLOOR)) floor = TRUE;
-
-
-	/* Paranoia XXX XXX XXX */
-	msg_print(NULL);
-
-
-	/* Not done */
-	done = FALSE;
-
-	/* No item selected */
-	item = FALSE;
-
-
-	/* Full inventory */
-	i1 = 0;
-	i2 = INVEN_PACK - 1;
-
-	/* Forbid inventory */
-	if (!inven) i2 = -1;
-
-	/* Restrict inventory indexes */
-	while ((i1 <= i2) && (!get_item_okay(i1))) i1++;
-	while ((i1 <= i2) && (!get_item_okay(i2))) i2--;
-
-
-	/* Full equipment */
-	e1 = INVEN_WIELD;
-	e2 = INVEN_TOTAL - 1;
-
-	/* Forbid equipment */
-	if (!equip) e2 = -1;
-
-	/* Restrict equipment indexes */
-	while ((e1 <= e2) && (!get_item_okay(e1))) e1++;
-	while ((e1 <= e2) && (!get_item_okay(e2))) e2--;
-
-
-	/* Restrict floor usage */
-	if (floor)
-	{
-		/* Scan all objects in the grid */
-		for (this_o_idx = cave[py][px].o_idx; this_o_idx; this_o_idx = next_o_idx)
-		{
-			object_type *o_ptr;
-
-			/* Acquire object */
-			o_ptr = &o_list[this_o_idx];
-
-			/* Acquire next object */
-			next_o_idx = o_ptr->next_o_idx;
-
-			/* Accept the item on the floor if legal */
-			if (item_tester_okay(o_ptr)) allow_floor = TRUE;
-		}
-	}
-
-
-	/* Require at least one legal choice */
-	if (!allow_floor && (i1 > i2) && (e1 > e2))
-	{
-		/* Cancel p_ptr->command_see */
-		command_see = FALSE;
-
-		/* Oops */
-		oops = TRUE;
-
-		/* Done */
-		done = TRUE;
-	}
-
-	/* Analyze choices */
-	else
-	{
-		/* Hack -- Start on equipment if requested */
-		if (command_see && command_wrk && equip)
-		{
-			command_wrk = TRUE;
-		}
-
-		/* Use inventory if allowed */
-		else if (inven)
-		{
-			command_wrk = FALSE;
-		}
-
-		/* Use equipment if allowed */
-		else if (equip)
-		{
-			command_wrk = TRUE;
-		}
-
-		/* Use inventory for floor */
-		else
-		{
-			command_wrk = FALSE;
-		}
-	}
-
-
-	/* Hack -- start out in "display" mode */
-	if (command_see)
-	{
-		/* Save screen */
-		screen_save();
-	}
-
-
-	/* Repeat until done */
-	while (!done)
-	{
-		/* Show choices */
-		if (show_choices)
-		{
-			int ni = 0;
-			int ne = 0;
-
-			/* Scan windows */
-			for (j = 0; j < 8; j++)
-			{
-				/* Unused */
-				if (!angband_term[j]) continue;
-
-				/* Count windows displaying inven */
-				if (window_flag[j] & (PW_INVEN)) ni++;
-
-				/* Count windows displaying equip */
-				if (window_flag[j] & (PW_EQUIP)) ne++;
-			}
-
-			/* Toggle if needed */
-			if ((command_wrk && ni && !ne) ||
-			    (!command_wrk && !ni && ne))
-			{
-				/* Toggle */
-				toggle_inven_equip();
-
-				/* Track toggles */
-				toggle = !toggle;
-			}
-
-			/* Update */
-			p_ptr->window |= (PW_INVEN | PW_EQUIP);
-
-			/* Redraw windows */
-			window_stuff();
-		}
-
-		/* Inventory screen */
-		if (!command_wrk)
-		{
-			/* Extract the legal requests */
-			n1 = I2A(i1);
-			n2 = I2A(i2);
-
-			/* Redraw if needed */
-			if (command_see) show_inven();
-		}
-
-		/* Equipment screen */
-		else
-		{
-			/* Extract the legal requests */
-			n1 = I2A(e1 - INVEN_WIELD);
-			n2 = I2A(e2 - INVEN_WIELD);
-
-			/* Redraw if needed */
-			if (command_see) show_equip();
-		}
-
-		/* Viewing inventory */
-		if (!command_wrk)
-		{
-			/* Begin the prompt */
-			sprintf(out_val, "Inven:");
-
-			/* Some legal items */
-			if (i1 <= i2)
-			{
-				/* Build the prompt */
-				sprintf(tmp_val, " %c-%c,",
-				        index_to_label(i1), index_to_label(i2));
-
-				/* Append */
-				strcat(out_val, tmp_val);
-			}
-
-			/* Indicate ability to "view" */
-			if (!command_see) strcat(out_val, " * to see,");
-
-			/* Append */
-			if (equip) strcat(out_val, " / for Equip,");
-		}
-
-		/* Viewing equipment */
-		else
-		{
-			/* Begin the prompt */
-			sprintf(out_val, "Equip:");
-
-			/* Some legal items */
-			if (e1 <= e2)
-			{
-				/* Build the prompt */
-				sprintf(tmp_val, " %c-%c,",
-				        index_to_label(e1), index_to_label(e2));
-
-				/* Append */
-				strcat(out_val, tmp_val);
-			}
-
-			/* Indicate ability to "view" */
-			if (!command_see) strcat(out_val, " * to see,");
-
-			/* Append */
-			if (inven) strcat(out_val, " / for Inven,");
-		}
-
-		/* Indicate legality of the "floor" item */
-		if (allow_floor) strcat(out_val, " - for floor,");
-
-		/* Finish the prompt */
-		strcat(out_val, " ESC");
-
-		/* Build the prompt */
-		sprintf(tmp_val, "(%s) %s", out_val, pmt);
-
-		/* Show the prompt */
-		prt(tmp_val, 0, 0);
-
-
-		/* Get a key */
-		which = inkey();
-
-		/* Parse it */
-		switch (which)
-		{
-			case ESCAPE:
-			{
-				done = TRUE;
-				break;
-			}
-
-			case '*':
-			case '?':
-			case ' ':
-			{
-				/* Hide the list */
-				if (command_see)
-				{
-					/* Flip flag */
-					command_see = FALSE;
-
-					/* Load screen */
-					screen_load();
-				}
-
-				/* Show the list */
-				else
-				{
-					/* Save screen */
-					screen_save();
-
-					/* Flip flag */
-					command_see = TRUE;
-				}
-				break;
-			}
-
-			case '/':
-			{
-				/* Verify legality */
-				if (!inven || !equip)
-				{
-					bell();
-					break;
-				}
-
-				/* Hack -- Fix screen */
-				if (command_see)
-				{
-					/* Load screen */
-					screen_load();
-
-					/* Save screen */
-					screen_save();
-				}
-
-				/* Switch inven/equip */
-				command_wrk = !command_wrk;
-
-				/* Need to redraw */
-				break;
-			}
-
-			case '-':
-			{
-				/* Use floor item */
-				if (allow_floor)
-				{
-					/* Scan all objects in the grid */
-					for (this_o_idx = cave[py][px].o_idx; this_o_idx; this_o_idx = next_o_idx)
-					{
-						object_type *o_ptr;
-
-						/* Acquire object */
-						o_ptr = &o_list[this_o_idx];
-
-						/* Acquire next object */
-						next_o_idx = o_ptr->next_o_idx;
-
-						/* Validate the item */
-						if (!item_tester_okay(o_ptr)) continue;
-
-						/* Special index */
-						k = 0 - this_o_idx;
-
-						/* Verify the item (if required) */
-						if (other_query_flag && !verify("Try", k)) continue;
-
-						/* Allow player to "refuse" certain actions */
-						if (!get_item_allow(k)) continue;
-
-						/* Accept that choice */
-						(*cp) = k;
-						item = TRUE;
-						done = TRUE;
-						break;
-					}
-
-					/* Outer break */
-					if (done) break;
-				}
-
-				/* Oops */
-				bell();
-				break;
-			}
-
-			case '0':
-			case '1': case '2': case '3':
-			case '4': case '5': case '6':
-			case '7': case '8': case '9':
-			{
-				/* Look up the tag */
-				if (!get_tag(&k, which))
-				{
-					bell();
-					break;
-				}
-
-				/* Hack -- Validate the item */
-				if ((k < INVEN_WIELD) ? !inven : !equip)
-				{
-					bell();
-					break;
-				}
-
-				/* Validate the item */
-				if (!get_item_okay(k))
-				{
-					bell();
-					break;
-				}
-
-				/* Allow player to "refuse" certain actions */
-				if (!get_item_allow(k))
-				{
-					done = TRUE;
-					break;
-				}
-
-				/* Accept that choice */
-				(*cp) = k;
-				item = TRUE;
-				done = TRUE;
-				break;
-			}
-
-			case '\n':
-			case '\r':
-			{
-				/* Choose "default" inventory item */
-				if (!command_wrk)
-				{
-					k = ((i1 == i2) ? i1 : -1);
-				}
-
-				/* Choose "default" equipment item */
-				else
-				{
-					k = ((e1 == e2) ? e1 : -1);
-				}
-
-				/* Validate the item */
-				if (!get_item_okay(k))
-				{
-					bell();
-					break;
-				}
-
-				/* Allow player to "refuse" certain actions */
-				if (!get_item_allow(k))
-				{
-					done = TRUE;
-					break;
-				}
-
-				/* Accept that choice */
-				(*cp) = k;
-				item = TRUE;
-				done = TRUE;
-				break;
-			}
-
-			default:
-			{
-				int ver;
-
-				/* Extract "query" setting */
-				ver = isupper(which);
-				which = tolower(which);
-
-				/* Convert letter to inventory index */
-				if (!command_wrk)
-				{
-					k = label_to_inven(which);
-				}
-
-				/* Convert letter to equipment index */
-				else
-				{
-					k = label_to_equip(which);
-				}
-
-				/* Validate the item */
-				if (!get_item_okay(k))
-				{
-					bell();
-					break;
-				}
-
-				/* Verify the item */
-				if (ver && !verify("Try", k))
-				{
-					done = TRUE;
-					break;
-				}
-
-				/* Allow player to "refuse" certain actions */
-				if (!get_item_allow(k))
-				{
-					done = TRUE;
-					break;
-				}
-
-				/* Accept that choice */
-				(*cp) = k;
-				item = TRUE;
-				done = TRUE;
-				break;
-			}
-		}
-	}
-
-
-	/* Fix the screen if necessary */
-	if (command_see)
-	{
-		/* Load screen */
-		screen_load();
-
-		/* Hack -- Cancel "display" */
-		command_see = FALSE;
-	}
-
-
-	/* Forget the item_tester_tval restriction */
-	item_tester_tval = 0;
-
-	/* Forget the item_tester_hook restriction */
-	item_tester_hook = NULL;
-
-
-	/* Clean up */
-	if (show_choices)
-	{
-		/* Toggle again if needed */
-		if (toggle) toggle_inven_equip();
-
-		/* Update */
-		p_ptr->window |= (PW_INVEN | PW_EQUIP);
-
-		/* Window stuff */
-		window_stuff();
-	}
-
-
-	/* Clear the prompt line */
-	prt("", 0, 0);
-
-	/* Warning if needed */
-	if (oops && str) msg_print(str);
-
-	/* Result */
-	return (item);
-}
-
-
-#ifdef ALLOW_EASY_FLOOR
-
 /*
  * scan_floor --
  *
@@ -3047,7 +2450,7 @@ bool scan_floor(int *items, int *item_num, int y, int x, int mode)
 	if (!in_bounds(y, x)) return (FALSE);
 
 	/* Scan all objects in the grid */
-	for (this_o_idx = cave[y][x].o_idx; this_o_idx; this_o_idx = next_o_idx)
+	for (this_o_idx = area(y, x)->o_idx; this_o_idx; this_o_idx = next_o_idx)
 	{
 		object_type *o_ptr;
 
@@ -3110,7 +2513,7 @@ void show_floor(int y, int x)
 	if (show_weights) lim -= 9;
 
 	/* Scan for objects in the grid, using item_tester_okay() */
-	(void) scan_floor(floor_list, &floor_num, y, x, 0x01);
+	(void)scan_floor(floor_list, &floor_num, y, x, 0x01);
 
 	/* Display the inventory */
 	for (k = 0, i = 0; i < floor_num; i++)
@@ -3183,14 +2586,63 @@ void show_floor(int y, int x)
 }
 
 /*
- * This version of get_item() is called by get_item() when
- * the easy_floor is on.
+ * Let the user select an item, save its "index"
+ *
+ * Return TRUE only if an acceptable item was chosen by the user.
+ *
+ * The selected item must satisfy the "item_tester_hook()" function,
+ * if that hook is set, and the "item_tester_tval", if that value is set.
+ *
+ * All "item_tester" restrictions are cleared before this function returns.
+ *
+ * The user is allowed to choose acceptable items from the equipment,
+ * inventory, or floor, respectively, if the proper flag was given,
+ * and there are any acceptable items in that location.
+ *
+ * The equipment or inventory are displayed (even if no acceptable
+ * items are in that location) if the proper flag was given.
+ *
+ * If there are no acceptable items available anywhere, and "str" is
+ * not NULL, then it will be used as the text of a warning message
+ * before the function returns.
+ *
+ * Note that the user must press "-" to specify the item on the floor,
+ * and there is no way to "examine" the item on the floor, while the
+ * use of "capital" letters will "examine" an inventory/equipment item,
+ * and prompt for its use.
+ *
+ * If a legal item is selected from the inventory, we save it in "cp"
+ * directly (0 to 35), and return TRUE.
+ *
+ * If a legal item is selected from the floor, we save it in "cp" as
+ * a negative (-1 to -511), and return TRUE.
+ *
+ * If no item is available, we do nothing to "cp", and we display a
+ * warning message, using "str" if available, and return FALSE.
+ *
+ * If no item is selected, we do nothing to "cp", and return FALSE.
+ *
+ * Global "p_ptr->command_new" is used when viewing the inventory or equipment
+ * to allow the user to enter a command while viewing those screens, and
+ * also to induce "auto-enter" of stores, and other such stuff.
+ *
+ * Global "p_ptr->command_see" may be set before calling this function to start
+ * out in "browse" mode.  It is cleared before this function returns.
+ *
+ * Global "p_ptr->command_wrk" is used to choose between equip/inven listings.
+ * If it is TRUE then we are viewing inventory, else equipment.
+ *
+ * We always erase the prompt when we are done, leaving a blank line,
+ * or a warning message, if appropriate, if no items are available.
+ *
+ * This version of get_item() includes the modifications due to the
+ * easy_floor flag.  This flag changes how items on the floor are treated.
  */
-bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
+bool get_item(int *cp, cptr pmt, cptr str, int mode)
 {
-	char n1 = ' ', n2 = ' ', which = ' ';
+	char n1 = ' ', n2 = ' ', which;
 
-	int j, k, i1, i2, e1, e2;
+	int i, j, k, i1, i2, e1, e2;
 
 	bool done, item;
 
@@ -3210,8 +2662,6 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 	char out_val[160];
 
 	int floor_num, floor_list[23], floor_top = 0;
-
-#ifdef ALLOW_REPEAT
 
 	/* Get the item index */
 	if (repeat_pull(cp))
@@ -3254,8 +2704,6 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 			return (TRUE);
 		}
 	}
-
-#endif /* ALLOW_REPEAT */
 
 	/* Extract args */
 	if (mode & (USE_EQUIP)) equip = TRUE;
@@ -3305,7 +2753,7 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 	if (floor)
 	{
 		/* Scan all objects in the grid */
-		(void) scan_floor(floor_list, &floor_num, py, px, 0x01);
+		(void)scan_floor(floor_list, &floor_num, py, px, 0x01);
 	}
 
 	/* Accept inventory */
@@ -3336,6 +2784,7 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 		/* Hack -- Start on equipment if requested */
 		if (command_see && (command_wrk == (USE_EQUIP)) && allow_equip)
 		{
+			/* This line is redundant */
 			command_wrk = (USE_EQUIP);
 		}
 
@@ -3368,42 +2817,38 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 	/* Repeat until done */
 	while (!done)
 	{
-		/* Show choices */
-		if (show_choices)
+		int ni = 0;
+		int ne = 0;
+
+		/* Scan windows */
+		for (j = 0; j < 8; j++)
 		{
-			int ni = 0;
-			int ne = 0;
+			/* Unused */
+			if (!angband_term[j]) continue;
 
-			/* Scan windows */
-			for (j = 0; j < 8; j++)
-			{
-				/* Unused */
-				if (!angband_term[j]) continue;
+			/* Count windows displaying inven */
+			if (window_flag[j] & (PW_INVEN)) ni++;
 
-				/* Count windows displaying inven */
-				if (window_flag[j] & (PW_INVEN)) ni++;
-
-				/* Count windows displaying equip */
-				if (window_flag[j] & (PW_EQUIP)) ne++;
-			}
-
-			/* Toggle if needed */
-			if ((command_wrk == (USE_EQUIP) && ni && !ne) ||
-				(command_wrk == (USE_INVEN) && !ni && ne))
-			{
-				/* Toggle */
-				toggle_inven_equip();
-
-				/* Track toggles */
-				toggle = !toggle;
-			}
-
-			/* Update */
-			p_ptr->window |= (PW_INVEN | PW_EQUIP);
-
-			/* Redraw windows */
-			window_stuff();
+			/* Count windows displaying equip */
+			if (window_flag[j] & (PW_EQUIP)) ne++;
 		}
+
+		/* Toggle if needed */
+		if ((command_wrk == (USE_EQUIP) && ni && !ne) ||
+			(command_wrk == (USE_INVEN) && !ni && ne))
+		{
+			/* Toggle */
+			toggle_inven_equip();
+
+			/* Track toggles */
+			toggle = !toggle;
+		}
+
+		/* Update */
+		p_ptr->window |= (PW_INVEN | PW_EQUIP);
+
+		/* Redraw windows */
+		window_stuff();
 
 		/* Inventory screen */
 		if (command_wrk == (USE_INVEN))
@@ -3438,7 +2883,7 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 			n2 = I2A(k - floor_top);
 
 			/* Redraw if needed */
-			if (command_see) show_floor(py, px);
+			if (command_see && easy_floor) show_floor(py, px);
 		}
 
 		/* Viewing inventory */
@@ -3488,7 +2933,7 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 		}
 
 		/* Viewing floor */
-		else if (command_wrk == (USE_FLOOR))
+		else if (command_wrk == (USE_FLOOR) && easy_floor)
 		{
 			/* Begin the prompt */
 			sprintf(out_val, "Floor:");
@@ -3511,6 +2956,11 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 			{
 				strcat(out_val, " / for Equip,");
 			}
+		}
+		else
+		{
+			/* Begin the prompt */
+			sprintf(out_val, "Top item on floor: '-'");
 		}
 
 		/* Finish the prompt */
@@ -3619,6 +3069,28 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 					break;
 				}
 
+				if (!easy_floor)
+				{
+					/* Scan all objects in the grid */
+					for (i = 0; i < floor_num; i++)
+					{
+						/* Floor item */
+						k = 0 - floor_list[i];
+
+						/* Verify the item (if required) */
+						if (other_query_flag && !verify("Try", k)) continue;
+
+						/* Allow player to "refuse" certain actions */
+						if (!get_item_allow(k)) continue;
+
+						/* Accept that choice */
+						(*cp) = k;
+						item = TRUE;
+						done = TRUE;
+						break;
+					}
+				}
+
 				/*
 				 * If we are already examining the floor, and there
 				 * is only one item, we will always select it.
@@ -3626,7 +3098,7 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 				 * one item, we will select it if floor_query_flag
 				 * is FALSE.
 				 */
-				if (floor_num == 1)
+				else if (floor_num == 1)
 				{
 					if ((command_wrk == (USE_FLOOR)) || (!carry_query_flag))
 					{
@@ -3846,18 +3318,15 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 
 
 	/* Clean up */
-	if (show_choices)
-	{
-		/* Toggle again if needed */
-		if (toggle) toggle_inven_equip();
 
-		/* Update */
-		p_ptr->window |= (PW_INVEN | PW_EQUIP);
+	/* Toggle again if needed */
+	if (toggle) toggle_inven_equip();
 
-		/* Window stuff */
-		window_stuff();
-	}
+	/* Update */
+	p_ptr->window |= (PW_INVEN | PW_EQUIP);
 
+	/* Window stuff */
+	window_stuff();
 
 	/* Clear the prompt line */
 	prt("", 0, 0);
@@ -3865,283 +3334,8 @@ bool get_item_floor(int *cp, cptr pmt, cptr str, int mode)
 	/* Warning if needed */
 	if (oops && str) msg_print(str);
 
-#ifdef ALLOW_REPEAT
 	if (item) repeat_push(*cp);
-#endif /* ALLOW_REPEAT */
 
 	/* Result */
 	return (item);
 }
-
-
-/*
- * Make the player carry everything in a grid
- *
- * If "pickup" is FALSE then only gold will be picked up
- *
- * This is called by py_pickup() when easy_floor is TRUE.
- */
-void py_pickup_floor(int pickup)
-{
-	s16b this_o_idx, next_o_idx;
-
-	char o_name[80];
-	object_type *o_ptr;
-
-	int floor_num = 0, floor_list[23], floor_o_idx = 0;
-
-	int can_pickup = 0;
-
-	bool do_ask = TRUE;
-
-	/* Scan the pile of objects */
-	for (this_o_idx = cave[py][px].o_idx; this_o_idx; this_o_idx = next_o_idx)
-	{
-		object_type *o_ptr;
-
-		/* Access the object */
-		o_ptr = &o_list[this_o_idx];
-
-		/* Describe the object */
-		object_desc(o_name, o_ptr, TRUE, 3);
-
-		/* Access the next object */
-		next_o_idx = o_ptr->next_o_idx;
-
-		/* Hack -- disturb */
-		disturb(0, 0);
-
-		/* Pick up gold */
-		if (o_ptr->tval == TV_GOLD)
-		{
-			/* Message */
-			msg_format("You have found %ld gold pieces worth of %s.",
-				(long) o_ptr->pval, o_name);
-
-			/* Collect the gold */
-			p_ptr->au += o_ptr->pval;
-
-			/* Redraw gold */
-			p_ptr->redraw |= (PR_GOLD);
-
-			/* Window stuff */
-			p_ptr->window |= (PW_PLAYER);
-
-			/* Delete the gold */
-			delete_object_idx(this_o_idx);
-
-			/* Check the next object */
-			continue;
-		}
-
-		/* Test for auto-pickup */
-		if (auto_pickup_okay(o_ptr))
-		{
-			/* Pick up the object */
-			py_pickup_aux(this_o_idx);
-
-			/* Check the next object */
-			continue;
-		}
-
-		/* Count non-gold objects that can be picked up. */
-		if (inven_carry_okay(o_ptr))
-		{
-			can_pickup++;
-		}
-
-		/* Remember this object index */
-		floor_list[floor_num] = this_o_idx;
-
-		/* Count non-gold objects */
-		floor_num++;
-
-		/* Remember this index */
-		floor_o_idx = this_o_idx;
-	}
-
-	/* There are no non-gold objects */
-	if (!floor_num)
-		return;
-
-	/* Mention the number of objects */
-	if (!pickup)
-	{
-		/* One object */
-		if (floor_num == 1)
-		{
-			/* Access the object */
-			o_ptr = &o_list[floor_o_idx];
-
-#ifdef ALLOW_EASY_SENSE
-
-			/* Option: Make object sensing easy */
-			if (easy_sense)
-			{
-				/* Sense the object */
-				(void) sense_object(o_ptr);
-			}
-
-#endif /* ALLOW_EASY_SENSE */
-
-			/* Describe the object */
-			object_desc(o_name, o_ptr, TRUE, 3);
-
-			/* Message */
-			msg_format("You see %s.", o_name);
-		}
-
-		/* Multiple objects */
-		else
-		{
-			/* Message */
-			msg_format("You see a pile of %d items.", floor_num);
-		}
-
-		/* Done */
-		return;
-	}
-
-	/* The player has no room for anything on the floor. */
-	if (!can_pickup)
-	{
-		/* One object */
-		if (floor_num == 1)
-		{
-			/* Access the object */
-			o_ptr = &o_list[floor_o_idx];
-
-#ifdef ALLOW_EASY_SENSE
-
-			/* Option: Make object sensing easy */
-			if (easy_sense)
-			{
-				/* Sense the object */
-				(void) sense_object(o_ptr);
-			}
-
-#endif /* ALLOW_EASY_SENSE */
-
-			/* Describe the object */
-			object_desc(o_name, o_ptr, TRUE, 3);
-
-			/* Message */
-			msg_format("You have no room for %s.", o_name);
-		}
-
-		/* Multiple objects */
-		else
-		{
-			/* Message */
-			msg_print("You have no room for any of the objects on the floor.");
-		}
-
-		/* Done */
-		return;
-	}
-
-	/* One object */
-	if (floor_num == 1)
-	{
-		/* Hack -- query every object */
-		if (carry_query_flag)
-		{
-			char out_val[160];
-
-			/* Access the object */
-			o_ptr = &o_list[floor_o_idx];
-
-#ifdef ALLOW_EASY_SENSE
-
-			/* Option: Make object sensing easy */
-			if (easy_sense)
-			{
-				/* Sense the object */
-				(void) sense_object(o_ptr);
-			}
-
-#endif /* ALLOW_EASY_SENSE */
-
-			/* Describe the object */
-			object_desc(o_name, o_ptr, TRUE, 3);
-
-			/* Build a prompt */
-			(void) sprintf(out_val, "Pick up %s? ", o_name);
-
-			/* Ask the user to confirm */
-			if (!get_check(out_val))
-			{
-				/* Done */
-				return;
-			}
-		}
-
-		/* Don't ask */
-		do_ask = FALSE;
-
-		/* Remember the object to pick up */
-		this_o_idx = floor_o_idx;
-	}
-
-	/* Allow the user to choose an object */
-	if (do_ask)
-	{
-		cptr q, s;
-
-		int item;
-
-#ifdef ALLOW_EASY_SENSE
-
-		/* Option: Make object sensing easy */
-		if (easy_sense)
-		{
-			int i;
-
-			/* Sense each object in the stack */
-			for (i = 0; i < floor_num; i++)
-			{
-				/* Access the object */
-				o_ptr = &o_list[floor_list[i]];
-
-				/* Sense the object */
-				(void) sense_object(o_ptr);
-			}
-		}
-
-#endif /* ALLOW_EASY_SENSE */
-
-		/* Restrict the choices */
-		item_tester_hook = inven_carry_okay;
-
-		/* Get an object */
-		q = "Get which item? ";
-		s = "You see nothing there.";
-		if (get_item(&item, q, s, (USE_FLOOR)))
-		{
-			this_o_idx = 0 - item;
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	/* Access the object */
-	o_ptr = &o_list[this_o_idx];
-
-#ifdef ALLOW_EASY_SENSE
-
-	/* Option: Make object sensing easy */
-	if (easy_sense)
-	{
-		/* Sense the object */
-		(void) sense_object(o_ptr);
-	}
-
-#endif /* ALLOW_EASY_SENSE */
-
-	/* Pick up the object */
-	py_pickup_aux(this_o_idx);
-}
-
-#endif /* ALLOW_EASY_FLOOR */

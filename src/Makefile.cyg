@@ -1,30 +1,22 @@
-# This is a makefile for the Cygwin 2.01 Beta release which may
+# This is a makefile for the Cygwin 1.0 release which may
 # be downloaded by following the links from the url:
-# http://sourceware.cygnus.com/cygwin/download.html. The file
-# you want is full.exe which is roughly 14 Mb in size.
-#
-# In order for the makefile to work you must install Cygwin
-# into your chosen directory and make sure your path points to
-# the directory in which gcc.exe is located. This will usually
-# be: c:\cygnus\cygwin-b20\h-i586-cygwin32\bin.
-
+# http://sources.redhat.com/cygwin/
 
 #
 # File locations - change these as appropriate
 #
-CYGDIR	=	c:/Programme/cygnus/cygwin-b20/h-i586-cygwin32
-TGTDIR = C:/ZAngband/
+CYGDIR  = c:/cygwin
 
 #
 # Standard defines
 #
 
-CC		=	gcc
-WRES		=	windres
-LIBDIRS	=	-L$(CYGDIR)/lib
-INCDIRS	=	-I$(CYGDIR)/i586-cygwin32/include/mingw32
-LIBS		=	-s -mno-cygwin -mwindows -e _mainCRTStartup -lwinmm
-CFLAGS	=	-Wall -O2 -fno-strength-reduce -DUSE_TRANSPARENCY
+CC      =       gcc
+WRES    =       windres
+LIBDIRS =       -L$(CYGDIR)/lib
+INCDIRS =       -I$(CYGDIR)/usr/include/mingw32
+LIBS    =       -s -mno-cygwin -mwindows -e _mainCRTStartup -lwinmm
+CFLAGS  =       -Wall -O2 -fno-strength-reduce -DUSE_TRANSPARENCY -DWINDOWS
 
 
 SRCS		= \
@@ -42,6 +34,7 @@ SRCS		= \
 	cmd6.c \
 	dungeon.c \
 	effects.c \
+	fields.c \
 	files.c \
 	flavor.c \
 	generate.c \
@@ -103,6 +96,7 @@ EXOBJS	= \
 	cmd6.o \
 	dungeon.o \
 	effects.o \
+	fields.o \
 	files.o \
 	flavor.o \
 	generate.o \
@@ -178,7 +172,7 @@ install:	zangband movebin cleanobjs
 #		del zangband.exe
 
 movebin:
-		mv -f zangband.exe $(TGTDIR)/zangband.exe
+		mv -f zangband.exe ../zangband.exe
 
 cleanobjs:
 		rm -f $(EXOBJS)
@@ -252,6 +246,9 @@ dungeon.o: dungeon.c $(INCS)
 	$(CC) $(CFLAGS) $(INCDIRS) -c -o $@ $<
 
 effects.o: effects.c $(INCS)
+	$(CC) $(CFLAGS) $(INCDIRS) -c -o $@ $<
+
+fields.o: fields.c $(INCS)
 	$(CC) $(CFLAGS) $(INCDIRS) -c -o $@ $<
 
 files.o: files.c $(INCS)

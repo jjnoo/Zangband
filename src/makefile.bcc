@@ -1,6 +1,6 @@
 ###################################################################
 #
-#  makefile.bcc - ZAngband makefile for Borland C++ 5.5 (Win32)
+#  makefile.bcc - Angband makefile for Borland C++ 5.5 (Win32)
 #
 ###################################################################
 
@@ -48,21 +48,64 @@ CPPFLAGS= $(CCOPTS) $(DBGOPT)
 ######################## Targets ##################################
 
 OBJ = \
-	main-win.obj readdib.obj \
-	artifact.obj avatar.obj birth.obj bldg.obj \
-	cave.obj cmd1.obj cmd2.obj cmd3.obj \
-	cmd4.obj cmd5.obj cmd6.obj dungeon.obj \
-	effects.obj files.obj flavor.obj generate.obj \
-	grid.obj init1.obj init2.obj load.obj \
-	streams.obj rooms.obj melee1.obj melee2.obj \
-	mind.obj monster1.obj monster2.obj mspells1.obj \
-	mspells2.obj mutation.obj notes.obj obj_kind.obj \
-	object1.obj object2.obj racial.obj save.obj \
-	scores.obj script.obj spells1.obj spells2.obj \
-	spells3.obj store.obj tables.obj util.obj \
-	variable.obj wild.obj wizard1.obj wizard2.obj \
-	xtra1.obj xtra2.obj z-form.obj z-rand.obj \
-	z-term.obj z-util.obj z-virt.obj
+	z-virt.obj \
+	z-util.obj \
+	z-term.obj \
+	z-rand.obj \
+	z-form.obj \
+	xtra2.obj \
+	xtra1.obj \
+	wizard2.obj \
+	wizard1.obj \
+	wild.obj \
+	variable.obj \
+	util.obj \
+	tables.obj \
+	streams.obj \
+	store.obj \
+	spells3.obj \
+	spells2.obj \
+	spells1.obj \
+	script.obj \
+	scores.obj \
+	save.obj \
+	rooms.obj \
+	readdib.obj \
+	racial.obj \
+	object2.obj \
+	object1.obj \
+	obj_kind.obj \
+	mutation.obj \
+	mspells2.obj \
+	mspells1.obj \
+	monster2.obj \
+	monster1.obj \
+	mind.obj \
+	melee2.obj \
+	melee1.obj \
+	main-win.obj \
+	notes.obj \
+	load.obj \
+	init2.obj \
+	init1.obj \
+	grid.obj \
+	generate.obj \
+	flavor.obj \
+	files.obj \
+	fields.obj \
+	effects.obj \
+	dungeon.obj \
+	cmd6.obj \
+	cmd5.obj \
+	cmd4.obj \
+	cmd3.obj \
+	cmd2.obj \
+	cmd1.obj \
+	cave.obj \
+	bldg.obj \
+	birth.obj \
+	avatar.obj \
+	artifact.obj
 
 all : $(EXE_FILE)
 

@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/08/06 09:19:47 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/09/18 09:00:57 $ */
 /* File: save.c */
 
 /* Purpose: interact with savefiles */
@@ -539,8 +539,8 @@ static void wr_item(object_type *o_ptr)
 	wr_s16b(o_ptr->k_idx);
 
 	/* Location */
-	wr_byte(o_ptr->iy);
-	wr_byte(o_ptr->ix);
+	wr_s16b(o_ptr->iy);
+	wr_s16b(o_ptr->ix);
 
 	wr_byte(o_ptr->tval);
 	wr_byte(o_ptr->sval);
@@ -644,8 +644,8 @@ static void wr_item(object_type *o_ptr)
 static void wr_monster(monster_type *m_ptr)
 {
 	wr_s16b(m_ptr->r_idx);
-	wr_byte(m_ptr->fy);
-	wr_byte(m_ptr->fx);
+	wr_s16b(m_ptr->fy);
+	wr_s16b(m_ptr->fx);
 	wr_s16b(m_ptr->hp);
 	wr_s16b(m_ptr->maxhp);
 	wr_s16b(m_ptr->csleep);
@@ -658,6 +658,57 @@ static void wr_monster(monster_type *m_ptr)
 	wr_u32b(m_ptr->smart);
 	wr_byte(0);
 }
+
+/*
+ * Write a "field" record
+ */
+static void wr_field(field_type *f_ptr)
+{
+	int i;
+
+	wr_s16b(f_ptr->t_idx);
+
+	/* Location */
+	wr_s16b(f_ptr->fy);
+	wr_s16b(f_ptr->fx);
+
+	/* Info flags */
+	wr_u16b(f_ptr->info);
+
+	/* Counter */
+	wr_s16b(f_ptr->counter);
+
+	/* Data */
+	for (i = 0; i < 8; i++)
+	{
+		wr_byte(f_ptr->data[i]);
+	}
+
+
+#ifdef USE_SCRIPT
+	{
+		cptr python_field = field_save_callback(f_ptr);
+		if (python_field && *python_field)
+		{
+			wr_s32b(strlen(python_field));
+			wr_string(python_field);
+			string_free(python_field);
+		}
+		else
+		{
+			/* No Python field */
+			wr_s32b(0);
+		}
+	}
+#else /* USE_SCRIPT */
+
+	/* No Python object */
+	wr_s32b(0);
+
+#endif /* USE_SCRIPT */
+}
+
+
 
 
 /*
@@ -1074,40 +1125,29 @@ static void wr_extra(void)
 
 	/* Current turn */
 	wr_s32b(turn);
+	
+	/* Trap detection status */
+	wr_byte(p_ptr->detected);
+	
+	/* Coords of last trap detection spell */
+	wr_s16b(p_ptr->detecty);
+	wr_s16b(p_ptr->detectx);
 }
 
-
-
 /*
- * Write the current dungeon
+ * Save the dungeon or wilderness
  */
-static void wr_dungeon(void)
+
+static void save_map(int ymax, int ymin, int xmax, int xmin)
 {
-	int i, y, x;
+	int y, x;
 
 	byte tmp8u;
-	u16b tmp16s;
 
 	byte count;
 	byte prev_char;
-	s16b prev_s16b;
 
 	cave_type *c_ptr;
-
-
-	/*** Basic info ***/
-
-	/* Dungeon specific info follows */
-	wr_u16b(dun_level);
-	wr_u16b(base_level);
-	wr_u16b(num_repro);
-	wr_u16b(py);
-	wr_u16b(px);
-	wr_u16b(cur_hgt);
-	wr_u16b(cur_wid);
-	wr_u16b(max_panel_rows);
-	wr_u16b(max_panel_cols);
-
 
 	/*** Simple "Run-Length-Encoding" of cave ***/
 
@@ -1116,17 +1156,17 @@ static void wr_dungeon(void)
 	prev_char = 0;
 
 	/* Dump the cave */
-	for (y = 0; y < cur_hgt; y++)
+	for (y = ymin; y < ymax; y++)
 	{
-		for (x = 0; x < cur_wid; x++)
+		for (x = xmin; x < xmax; x++)
 		{
 			/* Get the cave */
-			c_ptr = &cave[y][x];
+			c_ptr = area(y, x);
 
 			/* Extract a byte */
 			tmp8u = c_ptr->info;
 
-			/* If the run is broken, or too full, flush it */
+			/* If the run is broken, or too full, flush it 	*/
 			if ((tmp8u != prev_char) || (count == MAX_UCHAR))
 			{
 				wr_byte((byte)count);
@@ -1158,12 +1198,12 @@ static void wr_dungeon(void)
 	prev_char = 0;
 
 	/* Dump the cave */
-	for (y = 0; y < cur_hgt; y++)
+	for (y = ymin; y < ymax; y++)
 	{
-		for (x = 0; x < cur_wid; x++)
+		for (x = xmin; x < xmax; x++)
 		{
 			/* Get the cave */
-			c_ptr = &cave[y][x];
+			c_ptr = area(y,x);
 
 			/* Extract a byte */
 			tmp8u = c_ptr->feat;
@@ -1200,12 +1240,12 @@ static void wr_dungeon(void)
 	prev_char = 0;
 
 	/* Dump the cave */
-	for (y = 0; y < cur_hgt; y++)
+	for (y = ymin; y < ymax; y++)
 	{
-		for (x = 0; x < cur_wid; x++)
+		for (x = xmin; x < xmax; x++)
 		{
 			/* Get the cave */
-			c_ptr = &cave[y][x];
+			c_ptr = area(y,x);
 
 			/* Extract a byte */
 			tmp8u = c_ptr->mimic;
@@ -1233,54 +1273,111 @@ static void wr_dungeon(void)
 		wr_byte((byte)count);
 		wr_byte((byte)prev_char);
 	}
+	
+}
 
+/*
+ * Save wilderness data
+ */
+static void save_wild_data(void)
+{
+	int i, j;
 
-	/*** Simple "Run-Length-Encoding" of cave ***/
+	/* Save bounds */
+	wr_u16b(wild_grid.y_max);
+	wr_u16b(wild_grid.x_max);
+	wr_u16b(wild_grid.y_min);
+	wr_u16b(wild_grid.x_min);
+	wr_byte(wild_grid.y);
+	wr_byte(wild_grid.x);
 
-	/* Note that this will induce two wasted bytes */
-	count = 0;
-	prev_s16b = 0;
+	/* Save cache status */
+	wr_byte(wild_grid.cache_count);
 
-	/* Dump the cave */
-	for (y = 0; y < cur_hgt; y++)
+	/* Save wilderness seed */
+	wr_u32b(wild_grid.wild_seed);
+
+	/* Save wilderness map */
+	for (i = 0; i < max_wild; i++)
 	{
-		for (x = 0; x < cur_wid; x++)
+		for (j = 0; j < max_wild; j++)
 		{
-			/* Get the cave */
-			c_ptr = &cave[y][x];
+			/* Terrain */
+			wr_u16b(wild[j][i].done.wild);
 
-			/* Extract a byte */
-			tmp16s = c_ptr->special;
+			/* Town / Dungeon / Specials */
+			wr_byte(wild[j][i].done.town);
 
-			/* If the run is broken, or too full, flush it */
-			if ((tmp16s != prev_s16b) || (count == MAX_UCHAR))
-			{
-				wr_byte((byte)count);
-				wr_u16b(prev_s16b);
-				prev_s16b = tmp16s;
-				count = 1;
-			}
+			/* Info flag */
+			wr_byte(wild[j][i].done.info);
 
-			/* Continue the run */
-			else
-			{
-				count++;
-			}
+			/* Monster Gen type */
+			wr_byte(wild[j][i].done.mon_gen);
+
+			/* Monster Probability */
+			wr_byte(wild[j][i].done.mon_prob);
 		}
 	}
+}
 
-	/* Flush the data (if any) */
-	if (count)
+/*
+ * Write the current dungeon
+ */
+static void wr_dungeon(void)
+{
+	int i;
+	
+	int cur_wid = max_wid;
+	int cur_hgt = max_hgt;
+
+	/*** Basic info ***/
+
+	/* Dungeon specific info follows */
+	wr_u16b(dun_level);
+	wr_u16b(base_level);
+	wr_u16b(num_repro);
+	wr_u16b(py);
+	wr_u16b(px);
+	wr_u16b(max_hgt);
+	wr_u16b(max_wid);
+	wr_u16b(max_panel_rows);
+	wr_u16b(max_panel_cols);
+
+	/* Save wilderness data */
+	save_wild_data();
+
+	if (dun_level)
 	{
-		wr_byte((byte)count);
-		wr_u16b(prev_s16b);
+		/* Save dungeon map */
+		save_map(max_hgt, min_hgt, max_wid, min_wid);
+
+		/* Save wilderness map */
+		change_level(0);
+
+		save_map(wild_grid.y_max, wild_grid.y_min,
+		         wild_grid.x_max, wild_grid.x_min);
+
+		change_level(dun_level);
+		
+		/* Restore bounds */
+		max_hgt = cur_hgt;
+		max_wid = cur_wid;
+	}
+	else
+	{
+		save_map(wild_grid.y_max, wild_grid.y_min,
+		         wild_grid.x_max, wild_grid.x_min);
 	}
 
 
 	/* Compact the objects */
 	compact_objects(0);
+
 	/* Compact the monsters */
 	compact_monsters(0);
+
+	/* Compact the fields */
+	compact_fields(0);
 
 	/*** Dump objects ***/
 
@@ -1310,6 +1407,20 @@ static void wr_dungeon(void)
 
 		/* Dump it */
 		wr_monster(m_ptr);
+	}
+
+	/*** Dump the fields ***/
+
+	/* Total fields */
+	wr_u16b(fld_max);
+
+	/* Dump the fields */
+	for (i = 1; i < fld_max; i++)
+	{
+		field_type *f_ptr = &fld_list[i];
+
+		/* Dump it */
+		wr_field(f_ptr);
 	}
 }
 
@@ -1396,10 +1507,11 @@ static bool wr_savefile_new(void)
 	if (compress_savefile && (tmp16u > 40)) tmp16u = 40;
 	wr_u16b(tmp16u);
 
-	/* Dump the messages (oldest first!) */
+	/* Dump the messages and colors (oldest first!) */
 	for (i = tmp16u - 1; i >= 0; i--)
 	{
 		wr_string(message_str(i));
+		wr_byte(message_color(i));
 	}
 
 
@@ -1447,17 +1559,8 @@ static bool wr_savefile_new(void)
 	wr_s32b(p_ptr->wilderness_x);
 	wr_s32b(p_ptr->wilderness_y);
 
-	wr_s32b(max_wild_x);
-	wr_s32b(max_wild_y);
-
-	/* Dump the wilderness seeds */
-	for (i = 0; i < max_wild_x; i++)
-	{
-		for (j = 0; j < max_wild_y; j++)
-		{
-			wr_u32b(wilderness[j][i].seed);
-		}
-	}
+	wr_s32b((s32b) max_wild);
+	wr_s32b((s32b) max_wild);
 
 	/* Hack -- Dump the artifacts */
 	tmp16u = max_a_idx;
@@ -1519,17 +1622,30 @@ static bool wr_savefile_new(void)
 	wr_u16b(0xFFFF);
 
 	/* Note the towns */
-	tmp16u = max_towns;
+	tmp16u = town_count;
 	wr_u16b(tmp16u);
 
-	/* Note the stores */
-	tmp16u = MAX_STORES;
-	wr_u16b(tmp16u);
-
-	/* Dump the stores of all towns */
-	for (i = 1; i < max_towns; i++)
+	/* Dump the town data */
+	for (i = 1; i < town_count; i++)
 	{
-		for (j = 0; j < MAX_STORES; j++)
+		/* RNG seed */
+		wr_u32b(town[i].seed);
+
+		/* Number of stores */
+		wr_byte(town[i].numstores);
+
+		/* Type */
+		wr_u16b(town[i].type);
+
+		/* Location */
+		wr_byte(town[i].x);
+		wr_byte(town[i].y);
+
+		/* Name */
+		wr_string(town[i].name);
+
+		/* Dump the stores of all towns */
+		for (j = 0; j < town[i].numstores; j++)
 		{
 			wr_store(&town[i].store[j]);
 		}
@@ -1551,7 +1667,7 @@ static bool wr_savefile_new(void)
 
 #ifdef USE_SCRIPT
 		{
-			cptr callbacks = callbacks_save_callback();
+			cptr callbacks = save_game_callback();
 			if (callbacks && *callbacks)
 			{
 				wr_s32b(strlen(callbacks));
@@ -1597,10 +1713,8 @@ static bool wr_savefile_new(void)
 static bool save_player_aux(char *name)
 {
 	bool    ok = FALSE;
-
-	int             fd = -1;
-
-	int             mode = 0644;
+	int     fd;
+	int     mode = 0644;
 
 
 	/* No file yet */

@@ -1,4 +1,3 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:51:21 $ */
 /* File: variable.c */
 
 /* Purpose: Angband variables */
@@ -108,8 +107,11 @@ bool death;				/* True if player has died */
 s16b running;			/* Current counter for running, if any */
 s16b resting;			/* Current counter for resting, if any */
 
-s16b cur_hgt;			/* Current dungeon height */
-s16b cur_wid;			/* Current dungeon width */
+s16b min_hgt;			/* Current y bounds of area() */
+s16b max_hgt;
+s16b min_wid;			/* Current x bounds of area() */
+s16b max_wid;
+
 s16b dun_level;			/* Current dungeon level */
 s16b num_repro;			/* Current reproducer count */
 
@@ -144,10 +146,8 @@ s16b coin_type;			/* Hack -- force coin type */
 bool opening_chest;		/* Hack -- prevent chest generation */
 
 bool shimmer_monsters;	/* Hack -- optimize multi-hued monsters */
-bool shimmer_objects;	/* Hack -- optimize multi-hued objects */
 
 bool repair_monsters;	/* Hack -- optimize detect monsters */
-bool repair_objects;	/* Hack -- optimize detect objects */
 
 s16b inven_nxt;			/* Hack -- unused */
 bool hack_mind;
@@ -163,8 +163,12 @@ s16b o_cnt = 0;			/* Number of live objects */
 s16b m_max = 1;			/* Number of allocated monsters */
 s16b m_cnt = 0;			/* Number of live monsters */
 
+s16b fld_max = 1;			/* Number of allocated fields */
+s16b fld_cnt = 0;			/* Number of live fields */
+
 s16b hack_m_idx = 0;	/* Hack -- see "process_monsters()" */
 s16b hack_m_idx_ii = 0;
+s16b *hack_fld_ptr = NULL; /* Hack -- see "fields.c" */
 bool multi_rew = FALSE;
 char summon_kin_type;   /* Hack, by Julian Lighton: summon 'relatives' */
 
@@ -174,9 +178,12 @@ s32b friend_align = 0;
 
 int leaving_quest = 0;
 
+s16b store_cache_num = 0;	/* Number of stores with stock */
+store_type **store_cache;	/* The cache of store stocks */
 
 /*
  * Software options (set via the '=' command).  See "tables.c"
+ * Needs to be rearranged to fit the data in tables.c
  */
 
 
@@ -196,16 +203,9 @@ bool stack_force_costs;		/* Merge discounts when stacking */
 
 bool show_labels;			/* Show labels in object listings */
 bool show_weights;			/* Show weights in object listings */
-bool show_choices;			/* Show choices in certain sub-windows */
-bool show_details;			/* Show details in certain sub-windows */
 
 bool ring_bell;				/* Ring the bell (on errors, etc) */
 bool use_color;				/* Use color if possible (slow) */
-
-bool show_inven_graph;		/* Show graphics in inventory */
-bool show_equip_graph;		/* Show graphics in equip list */
-bool show_store_graph;		/* Show graphics in store */
-
 
 
 /* Option Set 2 -- Disturbance */
@@ -221,23 +221,23 @@ bool disturb_panel;			/* Disturb whenever map panel changes */
 bool disturb_state;			/* Disturn whenever player state changes */
 bool disturb_minor;			/* Disturb whenever boring things happen */
 bool disturb_other;			/* Disturb whenever various things happen */
+bool disturb_traps;			/* Disturb whenever you move out of detect radius */
 
-bool alert_hitpoint;		/* Alert user to critical hitpoints */
 bool alert_failure;		/* Alert user to various failures */
 bool last_words;		/* Get last words upon dying */
-bool speak_unique;		/* Speaking uniques + shopkeepers */
+bool speak_unique;		/* Speaking uniques */
 bool small_levels;		/* Allow unusually small dungeon levels */
-bool always_small_levels;		/* Use always unusually small dungeon levels */
 bool empty_levels;		/* Allow empty 'arena' levels */
-bool player_symbols;		/* Use varying symbols for the player char */
-bool equippy_chars;		/* Back by popular demand... */
-bool skip_mutations;		/* Skip mutations screen even if we have it */
 bool plain_descriptions;	/* Plain object descriptions */
 bool stupid_monsters;		/* Monsters use old AI */
+bool silly_monsters;		/* Allow the silly monsters to be generated */
 bool auto_destroy;		/* Known worthless items are destroyed without confirmation */
 bool confirm_stairs;		/* Prompt before staircases... */
 bool wear_confirm;		/* Confirm before putting on known cursed items */
+
 bool disturb_pets;		/* Pets moving nearby disturb us */
+
+
 
 
 
@@ -272,7 +272,6 @@ bool take_notes;                        /* Allow notes to be added to a file */
 bool auto_notes;                        /* Automatically take notes */
 
 bool point_based;                       /* Point-based generation */
-
 
 /* Option Set 4 -- Efficiency */
 
@@ -339,16 +338,26 @@ bool good_item_flag;		/* True if "Artifact" on this level */
 
 bool closing_flag;		/* Dungeon is closing */
 
+bool fake_monochrome;	/* Use fake monochrome for effects */
+
 
 /*
  * Dungeon size info
  */
 
 s16b max_panel_rows, max_panel_cols;
-s16b panel_row, panel_col;
 s16b panel_row_min, panel_row_max;
 s16b panel_col_min, panel_col_max;
 s16b panel_col_prt, panel_row_prt;
+
+byte *mp_a = NULL;
+char *mp_c = NULL;
+	
+#ifdef USE_TRANSPARENCY
+byte *mp_ta = NULL;
+char *mp_tc = NULL;
+#endif /* USE_TRANSPARENCY */
+
 
 /*
  * Player location in dungeon
@@ -357,7 +366,7 @@ s16b py;
 s16b px;
 
 /*
- * Targetting variables
+ * Targeting variables
  */
 s16b target_who;
 s16b target_col;
@@ -397,12 +406,6 @@ char history[4][60];
 char savefile[1024];
 
 
-/*
- * Array of grids lit by player lite (see "cave.c")
- */
-s16b lite_n;
-s16b lite_y[LITE_MAX];
-s16b lite_x[LITE_MAX];
 
 /*
  * Array of grids viewable to the player (see "cave.c")
@@ -417,6 +420,14 @@ s16b view_x[VIEW_MAX];
 s16b temp_n;
 s16b temp_y[TEMP_MAX];
 s16b temp_x[TEMP_MAX];
+
+
+/*
+ * Array of grids for use in monster lighting effects (see "cave.c")
+ */
+s16b lite_n = 0;
+s16b lite_y[LITE_MAX];
+s16b lite_x[LITE_MAX];
 
 
 /*
@@ -485,6 +496,12 @@ u16b *message__ptr;
  * The array of chars, by offset [MESSAGE_BUF]
  */
 char *message__buf;
+
+/*
+ * The array[MESSAGE_MAX] of bytes for the colors of messages
+ */
+byte *message__color;
+
 
 
 /*
@@ -628,6 +645,48 @@ char angband_sound_name[SOUND_MAX][16] =
 cave_type *cave[MAX_HGT];
 
 /*
+ * The function pointer that is used to access the dungeon / wilderness.
+ * It points to a simple function when in the dungeon, that evaluates
+ * cave[y][x]
+ * In the wilderness, things are more complicated.
+ */
+
+cave_type *(*area)(int, int);
+
+/*
+ * Variables used to access the scrollable wilderness.
+ * This is designed to be as fast as possible - whilst using as little
+ * RAM as possible to store a massive wilderness.
+ *
+ * The wilderness is generated "on the fly" as the player moves around it.
+ * To save time - blocks of 16x16 squares are saved in a cache so they
+ * don't need to be redone if the player moves back and forth.
+ */
+
+/* wilderness block - array of 16x16 cave grids. */
+/* cave_type *block[WILD_BLOCK_SIZE]; */
+
+/* block used to generate plasma fractal for random wilderness */
+u16b *temp_block[WILD_BLOCK_SIZE+1];
+
+/* cache of blocks near the player */
+cave_type **wild_cache[WILD_BLOCKS];
+
+/* grid of blocks around the player */
+wild_grid_type wild_grid;
+
+/* The wilderness itself */
+wild_type **wild;
+
+/* Description of wilderness block types */
+wild_gen_data_type *wild_gen_data;
+
+/* The decision tree for working out what block type to pick */
+wild_choice_tree_type *wild_choice_tree;
+
+byte *wild_temp_dist;
+
+/*
  * The array of dungeon items [max_o_idx]
  */
 object_type *o_list;
@@ -637,11 +696,22 @@ object_type *o_list;
  */
 monster_type *m_list;
 
+/*
+ * The array of fields [max_fld_idx]
+ */
+field_type *fld_list;
+
+
 
 /*
  * Maximum number of towns
  */
 u16b max_towns;
+
+/*
+ * Number of towns used.
+ */
+u16b town_count;
 
 /*
  * The towns [max_towns]
@@ -792,6 +862,10 @@ monster_race *r_info;
 char *r_name;
 char *r_text;
 
+/*
+ * The field thaumatergical array
+ */
+field_thaum *t_info;
 
 /*
  * Hack -- The special Angband "System Suffix"
@@ -930,31 +1004,21 @@ bool (*get_obj_num_hook)(int k_idx);
 bool monk_armour_aux;
 bool monk_notify_aux;
 
-#ifdef ALLOW_EASY_OPEN /* TNB */
+
+/* Easy patch flags */
 bool easy_open;
-#endif /* ALLOW_EASY_OPEN -- TNB */
-
-#ifdef ALLOW_EASY_DISARM /* TNB */
 bool easy_disarm;
-#endif /* ALLOW_EASY_DISARM -- TNB */
-
-#ifdef ALLOW_EASY_FLOOR /* TNB */
 bool easy_floor;
-#endif /* ALLOW_EASY_FLOOR -- TNB */
 
 bool use_command;
 bool center_player;
 bool avoid_center;
-bool pillar_tunnels;
 
 /* Auto-destruction options */
 bool destroy_worthless;
 
-/*
- * Wilderness
- */
-wilderness_type **wilderness;
-
+/* Monster lighting effects */
+bool monster_light;
 
 /*
  * Buildings
@@ -1008,10 +1072,35 @@ u16b max_o_idx;
 u16b max_m_idx;
 
 /*
+ * Maximum number of fields on the level
+ */
+u16b max_fld_idx;
+
+/*
+ * Maximum number of field types
+ */
+u16b max_t_idx;
+
+
+/*
  * Maximum size of the wilderness
  */
-s32b max_wild_x;
-s32b max_wild_y;
+s32b max_wild_size;
+
+/*
+ * Current size of the wilderness
+ */
+s32b max_wild;
+
+/*
+ * Maximum number of nodes in the wilderness decision tree
+ */
+u16b max_w_node;
+
+/*
+ * Maximum number of types of wilderness block.
+ */
+u16b max_w_block;
 
 /*
  * Quest info
@@ -1060,7 +1149,6 @@ bool ironman_small_levels;    /* Always create unusually small dungeon levels */
 bool ironman_downward;        /* Don't allow climbing upwards/recalling */
 bool ironman_autoscum;        /* Permanently enable the autoscummer */
 bool ironman_hard_quests;     /* Quest monsters get reinforcements */
-bool lite_town;               /* Use "lite" town without wilderness */
 bool ironman_empty_levels;    /* Always create empty 'arena' levels */
 bool terrain_streams;         /* Create terrain 'streamers' in the dungeon */
 bool munchkin_death;          /* Ask for saving death */
@@ -1069,9 +1157,10 @@ bool ironman_nightmare;			/* Play the game in Nightmare mode */
 bool maximize_mode;
 bool preserve_mode;
 bool autoroller;
-bool fast_autoroller;
 
 
 bool use_transparency = FALSE; /* Use transparent tiles */
 
 bool can_save = TRUE;         /* Game can be saved */
+
+

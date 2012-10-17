@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:49:31 $ */
+/* CVS: Last edit by $Author: rr9 $ on $Date: 2000/10/03 19:46:43 $ */
 /* File: files.c */
 
 /* Purpose: code dealing with files (and death) */
@@ -234,6 +234,7 @@ static named_num gf_desc[] =
 	{"GF_OLD_CONF",			GF_OLD_CONF			},
 	{"GF_OLD_SLEEP",			GF_OLD_SLEEP		},
 	{"GF_OLD_DRAIN",			GF_OLD_DRAIN		},
+	{"GF_NEW_DRAIN",			GF_NEW_DRAIN		},
 	{"GF_AWAY_UNDEAD",		GF_AWAY_UNDEAD		},
 	{"GF_AWAY_EVIL",			GF_AWAY_EVIL		},
 	{"GF_AWAY_ALL",			GF_AWAY_ALL			},
@@ -300,6 +301,9 @@ static named_num gf_desc[] =
  *
  * Specify the attr/char values for "features" by feature index
  *   F:<num>:<a>:<c>
+ *
+ * Specify the attr/char values for "fields" by field index
+ *   T:<num>:<a>:<c>
  *
  * Specify the attr/char values for unaware "objects" by kind tval
  *   U:<tv>:<a>:<c>
@@ -389,6 +393,23 @@ errr process_pref_file_aux(char *buf)
 			k_ptr = &k_info[i];
 			if (n1) k_ptr->x_attr = n1;
 			if (n2) k_ptr->x_char = n2;
+			return (0);
+		}
+	}
+	
+	/* Process "T:<num>:<a>/<c>" -- attr/char for fields */
+	else if (buf[0] == 'T')
+	{
+		if (tokenize(buf+2, 3, zz, TOKENIZE_CHECKQUOTE) == 3)
+		{
+			field_thaum *t_ptr;
+			i = (huge)strtol(zz[0], NULL, 0);
+			n1 = strtol(zz[1], NULL, 0);
+			n2 = strtol(zz[2], NULL, 0);
+			if (i >= max_t_idx) return (1);
+			t_ptr = &t_info[i];
+			if (n1) t_ptr->f_attr = n1;
+			if (n2) t_ptr->f_char = n2;
 			return (0);
 		}
 	}
@@ -532,7 +553,7 @@ errr process_pref_file_aux(char *buf)
 				return (0);
 			}
 		}
-		
+
 		/* XXX XXX XXX - ignore unknown options */
 		return (0);
 	}
@@ -555,7 +576,7 @@ errr process_pref_file_aux(char *buf)
 				return (0);
 			}
 		}
-		
+
 		/* XXX XXX XXX - ignore unknown options */
 		return (0);
 	}
@@ -1267,7 +1288,7 @@ static cptr likert(int x, int y)
 
 /* Monk average attack damage - only used here, so not in tables.c */
 int monk_avg_damage[PY_MAX_LEVEL+1] =
-{ 
+{
 	0,
 	250, 275, 299, 299, 306, 309, 321, 325, 328, 332,
 	347, 353, 375, 450, 463, 507, 523, 537, 551, 575,
@@ -1275,6 +1296,7 @@ int monk_avg_damage[PY_MAX_LEVEL+1] =
 	1061, 1074, 1160, 1178, 1303, 1326, 1400, 1435, 1476, 1500,
 	1669, 1809, 1836, 1875, 2155, 2190, 2227, 2587, 2769, 2811
 };
+
 
 /*
  * Prints ratings on certain abilities
@@ -1337,7 +1359,7 @@ static void display_player_abilities(void)
 				energy_fire = 100;
 				break;
 			}
-		
+
 			/* Light Crossbow and Bolt */
 			case SV_LIGHT_XBOW:
 			{
@@ -1347,7 +1369,7 @@ static void display_player_abilities(void)
 
 			/* Heavy Crossbow and Bolt */
 			case SV_HEAVY_XBOW:
-			{		
+			{
 				if (p_ptr->stat_use[A_DEX] >= 16)
 				{
 					energy_fire = 150;
@@ -1361,8 +1383,10 @@ static void display_player_abilities(void)
 			break;
 		}
 	}
-	/* Calculate shots per round */
-	shots = p_ptr->num_fire * 100;
+	/* Calculate shots per round  - note "strange" formula. */
+	
+	/* The real number of shots per round is (1 + n)/2 */
+	shots = (1 + p_ptr->num_fire) * 50;
 	shot_frac = (shots * 100 / energy_fire) % 100;
 	shots = shots / energy_fire;
 
@@ -1420,12 +1444,14 @@ static void display_player_abilities(void)
 
 
 	put_str("Blows/Round :", 16, COL_SKILLS3);
+
 	if (!muta_att)
 		put_str(format("%d", p_ptr->num_blow), 16, COL_SKILLS3 + WID_SKILLS);
 	else
 		put_str(format("%d+%d", p_ptr->num_blow, muta_att), 16, COL_SKILLS3 + WID_SKILLS);
 
 	put_str("Shots/Round :", 17, COL_SKILLS3);
+
 	/* Calculate shots (rounded) */
 	put_str(format("%d.%d", shots, shot_frac), 17, COL_SKILLS3 + WID_SKILLS);
 
@@ -1438,16 +1464,17 @@ static void display_player_abilities(void)
 		avgdam = (100 - deadliness_conversion[ABS(dambonus)]);
 	else
 		avgdam = 0;
+
 	/* Effect of damage dice x2 */
 	avgdam *= damdice * (damsides + 1);
 
 	/* number of blows */
 	avgdam *= blows;
 
-	/*rescale*/
+	/* Rescale */
 	avgdam /= 200;
 
-	/* see if have a weapon with extra power*/
+	/* See if have a weapon with extra power */
 	if (o_ptr->k_idx)
 	{
 		/* Is there a vorpal effect we know about? */
@@ -1792,24 +1819,14 @@ static void display_player_equippy(int y, int x)
 		/* Object */
 		o_ptr = &inventory[i];
 
-#if 0
-		/* Skip empty objects */
-		if (!o_ptr->k_idx) continue;
-
-
-		/* Get attr/char for display */
-		a = tval_to_attr[o_ptr->tval & 0x7F];
-		c = tval_to_char[o_ptr->tval & 0x7F];
-#else
 		a = object_attr(o_ptr);
 		c = object_char(o_ptr);
-#endif
 
 		/* No color */
 		if (!use_color) a = TERM_WHITE;
 
 		/* Clear the part of the screen */
-		if (!equippy_chars || !o_ptr->k_idx)
+		if (!o_ptr->k_idx)
 		{
 			c = ' ';
 			a = TERM_DARK;
@@ -1929,7 +1946,7 @@ static void display_player_flag_info(void)
 	display_player_flag_aux(row++, col, "AuraElec:", 3, TR3_SH_ELEC, 0);
 	display_player_flag_aux(row++, col, "NoTelprt:", 3, TR3_NO_TELE, 0);
 	display_player_flag_aux(row++, col, "No Magic:", 3, TR3_NO_MAGIC, 0);
-	display_player_flag_aux(row++, col, "Wraithfm:", 3, TR3_WRAITH, 0);
+	display_player_flag_aux(row++, col, "Cursed  :", 3, TR3_CURSED | TR3_HEAVY_CURSE | TR3_PERMA_CURSE , 0);
 	display_player_flag_aux(row++, col, "DrainExp:", 3, TR3_DRAIN_EXP, 0);
 	display_player_flag_aux(row++, col, "Teleport:", 3, TR3_TELEPORT, 0);
 
@@ -1987,7 +2004,7 @@ static void display_player_misc_info(void)
 	c_put_str(TERM_L_BLUE, buf, 8, 13);
 }
 
-#endif /* 0 */
+#endif
 
 /*
  * Special display, part 2b
@@ -2247,301 +2264,10 @@ static void display_player_stat_info(void)
 	}
 }
 
-#if 0
-
-/*
- * Object flag names
- */
-static cptr object_flag_names[96] =
-{
-	"Add Str",
-	"Add Int",
-	"Add Wis",
-	"Add Dex",
-	"Add Con",
-	"Add Chr",
-	NULL,
-	NULL,
-	"Add Stea.",
-	"Add Sear.",
-	"Add Infra",
-	"Add Tun..",
-	"Add Speed",
-	"Add Blows",
-	"Chaotic",
-	"Vampiric",
-	"Slay Anim.",
-	"Slay Evil",
-	"Slay Und.",
-	"Slay Demon",
-	"Slay Orc",
-	"Slay Troll",
-	"Slay Giant",
-	"Slay Drag.",
-	"Kill Drag.",
-	"Sharpness",
-	"Impact",
-	"Pois Brand",
-	"Acid Brand",
-	"Elec Brand",
-	"Fire Brand",
-	"Cold Brand",
-
-	"Sust Str",
-	"Sust Int",
-	"Sust Wis",
-	"Sust Dex",
-	"Sust Con",
-	"Sust Chr",
-	NULL,
-	NULL,
-	"Imm Acid",
-	"Imm Elec",
-	"Imm Fire",
-	"Imm Cold",
-	"Throwing",
-	"Reflect",
-	"Free Act",
-	"Hold Life",
-	"Res Acid",
-	"Res Elec",
-	"Res Fire",
-	"Res Cold",
-	"Res Pois",
-	"Res Fear",
-	"Res Lite",
-	"Res Dark",
-	"Res Blind",
-	"Res Conf",
-	"Res Sound",
-	"Res Shard",
-	"Res Neth",
-	"Res Nexus",
-	"Res Chaos",
-	"Res Disen",
-	"Aura Fire",
-	"Aura Elec",
- 	NULL,
- 	NULL,
-	"NoTeleport",
-	"AntiMagic",
-	"WraithForm",
-	"EvilCurse",
-	"Easy Know",
- 	"Hide Type",
-	"Show Mods",
-	"Insta Art",
-	"Levitate",
-	"Lite",
-	"See Invis",
-	"Telepathy",
-	"Digestion",
-	"Regen",
-	"Xtra Might",
-	"Xtra Shots",
-	"Ign Acid",
-	"Ign Elec",
-	"Ign Fire",
-	"Ign Cold",
-	"Activate",
-	"Drain Exp",
-	"Teleport",
-	"Aggravate",
-	"Blessed",
-	"Cursed",
-	"Hvy Curse",
-	"Prm Curse"
-};
-
-
-/*
- * Summarize resistances
- */
-static void display_player_ben(void)
-{
-	int i, x, y;
-
-	object_type *o_ptr;
-
-	u32b f1, f2, f3;
-
-	u16b b[6];
-
-
-	/* Reset */
-	for (i = 0; i < 6; i++) b[i] = 0;
-
-
-	/* Scan equipment */
-	for (i = INVEN_WIELD; i < INVEN_TOTAL; i++)
-	{
-		/* Object */
-		o_ptr = &inventory[i];
-
-		/* Known object flags */
-		object_flags_known(o_ptr, &f1, &f2, &f3);
-
-		/* Incorporate */
-		b[0] |= (f1 & 0xFFFF);
-		b[1] |= (f1 >> 16);
-		b[2] |= (f2 & 0xFFFF);
-		b[3] |= (f2 >> 16);
-		b[4] |= (f3 & 0xFFFF);
-		b[5] |= (f3 >> 16);
-	}
-
-
-	/* Player flags */
-	player_flags(&f1, &f2, &f3);
-
-	/* Incorporate */
-	b[0] |= (f1 & 0xFFFF);
-	b[1] |= (f1 >> 16);
-	b[2] |= (f2 & 0xFFFF);
-	b[3] |= (f2 >> 16);
-	b[4] |= (f3 & 0xFFFF);
-	b[5] |= (f3 >> 16);
-
-
-	/* Scan cols */
-	for (x = 0; x < 6; x++)
-	{
-		/* Scan rows */
-		for (y = 0; y < 16; y++)
-		{
-			byte a = TERM_SLATE;
-			char c = '.';
-
-			cptr name = object_flag_names[16 * x + y];
-
-			/* No name */
-			if (!name) continue;
-
-			/* Dump name */
-			Term_putstr(x * 13, y + 4, -1, TERM_WHITE, name);
-
-			/* Dump colon */
-			Term_putch(x * 13 + 10, y + 4, TERM_WHITE, ':');
-
-			/* Check flag */
-			if (b[x] & (1 << y))
-			{
-				a = TERM_WHITE;
-				c = '+';
-			}
-
-			/* Monochrome */
-			if (!use_color) a = TERM_WHITE;
-
-			/* Dump flag */
-			Term_putch(x * 13 + 11, y + 4, a, c);
-		}
-	}
-}
-
-
-/*
- * Summarize resistances
- */
-static void display_player_ben_one(int mode)
-{
-	int i, n, x, y;
-
-	object_type *o_ptr;
-
-	u32b f1, f2, f3;
-
-	u16b b[13][6];
-
-
-	/* Scan equipment */
-	for (i = INVEN_WIELD; i < INVEN_TOTAL; i++)
-	{
-		/* Index */
-		n = (i - INVEN_WIELD);
-
-		/* Object */
-		o_ptr = &inventory[i];
-
-		/* Known object flags */
-		object_flags_known(o_ptr, &f1, &f2, &f3);
-
-		/* Incorporate */
-		b[n][0] = (u16b)(f1 & 0xFFFF);
-		b[n][1] = (u16b)(f1 >> 16);
-		b[n][2] = (u16b)(f2 & 0xFFFF);
-		b[n][3] = (u16b)(f2 >> 16);
-		b[n][4] = (u16b)(f3 & 0xFFFF);
-		b[n][5] = (u16b)(f3 >> 16);
-	}
-
-
-	/* Index */
-	n = 12;
-
-	/* Player flags */
-	player_flags(&f1, &f2, &f3);
-
-	/* Incorporate */
-	b[n][0] = (u16b)(f1 & 0xFFFF);
-	b[n][1] = (u16b)(f1 >> 16);
-	b[n][2] = (u16b)(f2 & 0xFFFF);
-	b[n][3] = (u16b)(f2 >> 16);
-	b[n][4] = (u16b)(f3 & 0xFFFF);
-	b[n][5] = (u16b)(f3 >> 16);
-
-
-	/* Scan cols */
-	for (x = 0; x < 3; x++)
-	{
-		/* Equippy */
-		display_player_equippy(2, x * 26 + 11);
-
-		/* Label */
-		Term_putstr(x * 26 + 11, 3, -1, TERM_WHITE, "abcdefghijkl@");
-
-		/* Scan rows */
-		for (y = 0; y < 16; y++)
-		{
-			cptr name = object_flag_names[48*mode+16*x+y];
-
-			/* No name */
-			if (!name) continue;
-
-			/* Dump name */
-			Term_putstr(x * 26, y + 4, -1, TERM_WHITE, name);
-
-			/* Dump colon */
-			Term_putch(x * 26 + 10, y + 4, TERM_WHITE, ':');
-
-			/* Check flags */
-			for (n = 0; n < 13; n++)
-			{
-				byte a = TERM_SLATE;
-				char c = '.';
-
-				/* Check flag */
-				if (b[n][3 * mode + x] & (1 << y))
-				{
-					a = TERM_WHITE;
-					c = '+';
-				}
-
-				/* Monochrome */
-				if (!use_color) a = TERM_WHITE;
-
-				/* Dump flag */
-				Term_putch(x * 26 + 11 + n, y + 4, a, c);
-			}
-		}
-	}
-}
-#endif /* 0 */
-
 #define COL_NAME			0
 #define WID_NAME			11
 
-#define COL_AGE			32
+#define COL_AGE				32
 #define COL_STATS			55
 
 
@@ -2810,6 +2536,7 @@ static void display_player_summary(void)
 
 typedef void (*display_func)(void);
 
+
 static display_func displays[DISPLAY_PLAYER_MAX] =
 {
 	/* Standard display with skills */
@@ -3069,17 +2796,13 @@ errr file_character(cptr name, bool full)
 
 	if (ironman_small_levels)
 		fprintf(fff, "\n Small Levels:       ALWAYS");
-	else if (always_small_levels)
-		fprintf(fff, "\n Small Levels:       ON");
 	else if (small_levels)
-		fprintf(fff, "\n Small Levels:       ENABLED");
+		fprintf(fff, "\n Small Levels:       ON");
 	else
 		fprintf(fff, "\n Small Levels:       OFF");
 
 	if (vanilla_town)
 		fprintf(fff, "\n Vanilla Town:       ON");
-	else if (lite_town)
-		fprintf(fff, "\n Lite Town:          ON");
 
 	if (ironman_shops)
 		fprintf(fff, "\n No Shops:           ON");
@@ -3100,7 +2823,7 @@ errr file_character(cptr name, bool full)
 		fprintf(fff, "\n Hard Quests:        OFF");
 
 	fprintf(fff, "\n Num. Random Quests: %d", number_of_quests());
-	
+
 	if (ironman_nightmare)
 		fprintf(fff, "\n Nightmare Mode:     ON");
 	else
@@ -3359,6 +3082,7 @@ static int get_line(file_tags *the_tags, cptr name)
 bool show_file(cptr name, cptr what, int line, int mode)
 {
 	int i, n, k;
+	int wid, hgt;
 
 	/* Number of "real" lines passed by */
 	int next = 0;
@@ -3413,6 +3137,10 @@ bool show_file(cptr name, cptr what, int line, int mode)
 
 	/* Tags for in-file references */
 	file_tags tags;
+
+
+	/* Get size */
+	Term_get_size(&wid, &hgt);
 
 	/* Wipe finder */
 	strcpy(finder, "");
@@ -3589,8 +3317,8 @@ bool show_file(cptr name, cptr what, int line, int mode)
 			next++;
 		}
 
-		/* Dump the next 20 lines of the file */
-		for (i = 0; i < 20; )
+		/* Dump the next hgt - 4 lines of the file */
+		for (i = 0; i < hgt - 4; )
 		{
 			/* Hack -- track the "first" line */
 			if (!i) line = next;
@@ -3658,25 +3386,39 @@ bool show_file(cptr name, cptr what, int line, int mode)
 		           FAKE_VER_MAJOR, FAKE_VER_MINOR, FAKE_VER_PATCH,
 		           caption, line, size), 0, 0);
 
-		/* Prompt -- menu screen */
+		/* Prompt -- with menu */
 		if (menu)
 		{
-			/* Wait for it */
-			prt("[Press a Number, or ESC to exit.]", 23, 0);
-		}
+			/* Prompt -- small files */
+			if (size <= hgt - 4)
+			{
+				/* Wait for it */
+				prt("[Press a Number, or ESC to exit.]", hgt - 1, 0);
+			}
 
-		/* Prompt -- small files */
-		else if (size <= 20)
-		{
-			/* Wait for it */
-			prt("[Press ESC to exit.]", 23, 0);
+			/* Prompt -- large files */
+			else
+			{
+				/* Wait for it */
+				prt("[Press a Number, Return, Space, -, =, /, or ESC to exit.]",
+				    hgt - 1, 0);
+			}
 		}
-
-		/* Prompt -- large files */
 		else
 		{
-			/* Wait for it */
-			prt("[Press Return, Space, -, =, /, or ESC to exit.]", 23, 0);
+			/* Prompt -- small files */
+			if (size <= hgt - 4)
+			{
+				/* Wait for it */
+				prt("[Press ESC to exit.]", hgt - 1, 0);
+			}
+
+			/* Prompt -- large files */
+			else
+			{
+				/* Wait for it */
+				prt("[Press Return, Space, -, =, /, or ESC to exit.]", hgt - 1, 0);
+			}
 		}
 
 		/* Get a keypress */
@@ -3697,7 +3439,7 @@ bool show_file(cptr name, cptr what, int line, int mode)
 		if (k == '=')
 		{
 			/* Get "shower" */
-			prt("Show: ", 23, 0);
+			prt("Show: ", hgt - 1, 0);
 			(void)askfor_aux(shower, 80);
 		}
 
@@ -3705,7 +3447,7 @@ bool show_file(cptr name, cptr what, int line, int mode)
 		if (k == '/')
 		{
 			/* Get "finder" */
-			prt("Find: ", 23, 0);
+			prt("Find: ", hgt - 1, 0);
 
 			if (askfor_aux(finder, 80))
 			{
@@ -3725,11 +3467,11 @@ bool show_file(cptr name, cptr what, int line, int mode)
 			}
 		}
 
-		/* Hack -- go to a specific line */
+		/* Go to a specific line */
 		if (k == '#')
 		{
 			char tmp[81];
-			prt("Goto Line: ", 23, 0);
+			prt("Goto Line: ", hgt - 1, 0);
 			strcpy(tmp, "0");
 
 			if (askfor_aux(tmp, 80))
@@ -3738,11 +3480,11 @@ bool show_file(cptr name, cptr what, int line, int mode)
 			}
 		}
 
-		/* Hack -- go to a specific file */
+		/* Go to a specific file */
 		if (k == '%')
 		{
 			char tmp[81];
-			prt("Goto File: ", 23, 0);
+			prt("Goto File: ", hgt - 1, 0);
 			strcpy(tmp, "help.hlp");
 
 			if (askfor_aux(tmp, 80))
@@ -3751,14 +3493,20 @@ bool show_file(cptr name, cptr what, int line, int mode)
 			}
 		}
 
-		/* Hack -- Allow backing up */
+		/* Go back half a page */
 		if (k == '-')
 		{
-			line = line - 10;
+			line = line - (hgt - 4) / 2;
 			if (line < 0) line = 0;
 		}
 
-		/* Hack -- Advance a single line */
+		/* Advance half a page */
+		if (k == '+')
+		{
+			line = line + (hgt - 4) / 2;
+		}
+
+		/* Advance a single line */
 		if ((k == '\n') || (k == '\r'))
 		{
 			line = line + 1;
@@ -3767,7 +3515,7 @@ bool show_file(cptr name, cptr what, int line, int mode)
 		/* Advance one page */
 		if (k == ' ')
 		{
-			line = line + 20;
+			line = line + hgt - 4;
 		}
 
 		/* Recurse on numbers */
@@ -3786,36 +3534,39 @@ bool show_file(cptr name, cptr what, int line, int mode)
 			}
 		}
 
-		/* Hack, dump to file */
+		/* Dump to file */
 		if (k == '|')
 		{
 			FILE *ffp;
-			char buff[1024];
+			char outfile[1024];
 			char xtmp[82];
 
-			strcpy (xtmp, "");
+			/* Start with an empty filename */
+			xtmp[0] = '\0';
 
-			if (get_string("File name: ", xtmp, 80))
-			{
-				if (xtmp[0] && (xtmp[0] != ' '))
-				{
-				}
-			}
-			else
-			{
-				continue;
-			}
+			/* Get a filename */
+			if (!get_string("File name: ", xtmp, 80)) continue;
+
+			/* Check for a "valid" name */
+			if (!(xtmp[0] && (xtmp[0] != ' '))) continue;
 
 			/* Build the filename */
-			path_build(buff, 1024, ANGBAND_DIR_USER, xtmp);
+			path_build(outfile, 1024, ANGBAND_DIR_USER, xtmp);
 
-			/* Close it */
+			/* Close the input file */
 			my_fclose(fff);
 
-			/* Hack -- Re-Open the file */
+			/* Hack -- Re-Open the input file */
 			fff = my_fopen(path, "r");
 
-			ffp = my_fopen(buff, "w");
+			/* Drop priv's */
+			safe_setuid_drop();
+
+			/* Open the output file */
+			ffp = my_fopen(outfile, "w");
+
+			/* Grab priv's */
+			safe_setuid_grab();
 
 			/* Oops */
 			if (!(fff && ffp))
@@ -3825,18 +3576,15 @@ bool show_file(cptr name, cptr what, int line, int mode)
 				break;
 			}
 
-			sprintf(xtmp, "%s: %s", player_name, what);
-			my_fputs(ffp, xtmp, 80);
-			my_fputs(ffp, "\n", 80);
+			/* Write the file line by line */
+			while (!my_fgets(fff, xtmp, 80))
+				my_fputs(ffp, xtmp, 80);
 
-			while (!my_fgets(fff, buff, 80))
-				my_fputs(ffp, buff, 80);
-
-			/* Close it */
+			/* Close the files */
 			my_fclose(fff);
 			my_fclose(ffp);
 
-			/* Hack -- Re-Open the file */
+			/* Hack -- Re-Open the input file */
 			fff = my_fopen(path, "r");
 		}
 
@@ -4023,10 +3771,10 @@ void change_player_name(void)
 	clear_from(22);
 }
 
-
-/*
- * Gets a name for the character, reacting to name changes.
+/* Gets a name for the character, reacting to name changes.
+ * Taken from V 2.9.0.
  */
+
 void get_character_name(void)
 {
 	char tmp[16];
@@ -4145,9 +3893,12 @@ void do_cmd_save_game(int is_autosave)
 
 	/* Refresh */
 	Term_fresh();
-	
+
 	/* Clear messages. */
 	msg_print(NULL);
+	
+	/* Hack -- erase the message line. */
+	prt("", 0, 0);
 
 	/* Note that the player is not dead */
 	(void)strcpy(died_from, "(alive and well)");
@@ -4616,7 +4367,6 @@ void close_game(void)
 	/* Flush the input */
 	flush();
 
-
 	/* No suspending now */
 	signals_ignore_tstp();
 
@@ -4675,7 +4425,6 @@ void close_game(void)
 			output_note(buf);
 		}
 
-		/* You are dead */
 		print_tomb();
 
 		/* Show more info */
@@ -4710,7 +4459,6 @@ void close_game(void)
 
 	/* Forget the high score fd */
 	highscore_fd = -1;
-
 
 	/* Allow suspending now */
 	signals_handle_tstp();

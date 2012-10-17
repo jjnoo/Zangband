@@ -1,4 +1,3 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:50:42 $ */
 /* File: notes.c */
 
 /* Purpose: Note taking to a file */
@@ -21,7 +20,7 @@
 cptr notes_file(void)
 {
 	char fname[15];
-	static char buf[500];
+	static char buf[1024];
 	char base_name[9];
 
 	/* Hack -- extract first 8 characters of name */
@@ -29,8 +28,8 @@ cptr notes_file(void)
 
 	/* Create the file name from the character's name plus .txt */
 	(void)strnfmt(fname, 15, "%s.txt", base_name);
-	
-	path_build(buf, 500, ANGBAND_DIR_SAVE, fname);
+
+	path_build(buf, 1024, ANGBAND_DIR_SAVE, fname);
 
 	/* return the filename */
 	return buf;

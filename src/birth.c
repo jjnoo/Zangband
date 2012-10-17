@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/08/16 09:57:10 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/08/16 09:55:32 $ */
 /* File: birth.c */
 
 /* Purpose: create a player character */
@@ -1479,47 +1479,6 @@ static void get_money(void)
 }
 
 
-
-#if 0
-/*
- * Display stat values, subset of "put_stats()"
- *
- * See 'display_player()' for screen layout constraints.
- */
-static void birth_put_stats(void)
-{
-	int i, p;
-	int col = 42;
-	byte attr;
-	char buf[80];
-
-
-	/* Put the stats (and percents) */
-	for (i = 0; i < A_MAX; i++)
-	{
-		/* Put the stat */
-		cnv_stat(stat_use[i], buf);
-		c_put_str(TERM_L_GREEN, buf, 3+i, col+24);
-
-		/* Put the percent */
-		if (stat_match[i])
-		{
-			p = 1000L * stat_match[i] / auto_round;
-			attr = (p < 100) ? TERM_YELLOW : TERM_L_GREEN;
-			sprintf(buf, "%3d.%d%%", p/10, p%10);
-			c_put_str(attr, buf, 3+i, col+13);
-		}
-
-		/* Never happened */
-		else
-		{
-			c_put_str(TERM_RED, "(NONE)", 3+i, col+13);
-		}
-	}
-}
-
-#endif /* 0 */
-
 /*
  * Clear all the global "character" data
  */
@@ -2113,7 +2072,6 @@ static bool get_player_class(void)
 	p_ptr->pclass = k;
 	cp_ptr = &class_info[p_ptr->pclass];
 	mp_ptr = &magic_info[p_ptr->pclass];
-	str = cp_ptr->title;
 
 	/* Display */
 	put_str("Class       :", 5, 1);
@@ -2130,6 +2088,8 @@ static bool get_player_class(void)
  *
  * This function allows the player to select a sex, race, and class, and
  * modify options (including the birth options).
+ *
+ * Taken from V 2.9.0
  */
 static bool player_birth_aux_1(void)
 {
@@ -2137,11 +2097,10 @@ static bool player_birth_aux_1(void)
 
 	cptr str;
 
+	int level;
+
 	char ch;
 
-#if 0
-	char p1 = '(';
-#endif
 	char p2 = ')';
 
 	char buf[80];
@@ -2214,7 +2173,7 @@ static bool player_birth_aux_1(void)
 		}
 
 		if (ch == 'S') return (FALSE);
-		k = (islower(ch) ? A2I(ch) : -1);
+
 		if (ch == ESCAPE) ch = '*';
 		if (ch == '*')
 		{
@@ -2237,7 +2196,6 @@ static bool player_birth_aux_1(void)
 	/* Set sex */
 	p_ptr->psex = k;
 	sp_ptr = &sex_info[p_ptr->psex];
-	str = sp_ptr->title;
 
 	/* Sex */
 	put_str("Sex         :", 3, 1);
@@ -2338,10 +2296,14 @@ static bool player_birth_aux_1(void)
 		for (j = 0; j < MAX_TRIES; j++)
 		{
 			/*
-			 * Random monster 5 - 10 levels out of depth
-			 * (depending on level)
+			 * Random monster out of depth
+			 * (depending on level + number of quests)
 			 */
-			r_idx = get_mon_num(q_ptr->level + 4 + randint(q_ptr->level / 10));
+			level = q_ptr->level + 6 +
+			        randint(q_ptr->level * v / 200 + 1) +
+			        randint(q_ptr->level * v / 200 + 1);
+
+			r_idx = get_mon_num(level);
 			r_ptr = &r_info[r_idx];
 
 			/* Save the index if the monster is deeper than current monster */
@@ -2398,8 +2360,6 @@ static bool player_birth_aux_1(void)
 	/* Done */
 	return (TRUE);
 }
-
-
 /*
  * Initial stat costs (initial stats always range from 10 to 18 inclusive).
  */
@@ -2416,6 +2376,8 @@ static int birth_stat_costs[(18-10)+1] = { 0, 1, 2, 4, 7, 11, 16, 22, 30 };
  * available points, to which race/class modifiers are then applied.
  *
  * Each unused point is converted into 100 gold pieces.
+ *
+ * Taken from V 2.9.0
  */
 static bool player_birth_aux_2(void)
 {
@@ -2433,6 +2395,8 @@ static bool player_birth_aux_2(void)
 	char ch;
 
 	char buf[80];
+
+	int mode = DISPLAY_PLAYER_STANDARD;
 
 
 	/* Initialize stats */
@@ -2458,7 +2422,6 @@ static bool player_birth_aux_2(void)
 	p_ptr->muta1 = 0;
 	p_ptr->muta2 = 0;
 	p_ptr->muta3 = 0;
-
 
 	/* Interact */
 	while (1)
@@ -2521,7 +2484,7 @@ static bool player_birth_aux_2(void)
 		p_ptr->csp = p_ptr->msp;
 
 		/* Display the player */
-		display_player(0);
+		display_player(mode);
 
 		/* Display the costs header */
 		put_str("Cost", row - 2, col + 32);
@@ -2608,6 +2571,7 @@ static bool player_birth_aux_3(void)
 
 	char buf[80];
 
+	int mode = DISPLAY_PLAYER_STANDARD;
 
 #ifdef ALLOW_AUTOROLLER
 
@@ -2896,13 +2860,14 @@ static bool player_birth_aux_3(void)
 			p_ptr->csp = p_ptr->msp;
 
 			/* Display the player */
-			display_player(0);
+			display_player(mode);
 
 			/* Prepare a prompt (must squeeze everything in) */
 			Term_gotoxy(2, 23);
 			Term_addch(TERM_WHITE, b1);
 			Term_addstr(-1, TERM_WHITE, "'r' to reroll");
 			if (prev) Term_addstr(-1, TERM_WHITE, ", 'p' for prev");
+			Term_addstr(-1, TERM_WHITE, ", 'h' for history");
 			Term_addstr(-1, TERM_WHITE, ", or ESC to accept");
 			Term_addch(TERM_WHITE, b2);
 
@@ -2926,6 +2891,12 @@ static bool player_birth_aux_3(void)
 			{
 				load_prev_data();
 				continue;
+			}
+
+			/* Increase mode */
+			if (ch == 'h')
+			{
+				mode = (mode + 1) % DISPLAY_PLAYER_MAX;
 			}
 
 			/* Help */
@@ -2990,7 +2961,7 @@ static bool player_birth_aux(void)
 	get_virtues();
 
 	/* Display the player */
-	display_player(0);
+	display_player(DISPLAY_PLAYER_STANDARD);
 
 	/* Prompt for it */
 	prt("['Q' to suicide, 'S' to start over, or ESC to continue]", 23, 10);
@@ -3007,8 +2978,6 @@ static bool player_birth_aux(void)
 	/* Accept */
 	return (TRUE);
 }
-
-
 /*
  * Create a new character.
  *
@@ -3037,11 +3006,11 @@ void player_birth(void)
 	}
 
 	/* Note player birth in the message recall */
-	message_add(" ");
-	message_add("  ");
-	message_add("====================");
-	message_add("  ");
-	message_add(" ");
+	message_add(" ", TERM_WHITE);
+	message_add("  ", TERM_WHITE);
+	message_add("====================", TERM_WHITE);
+	message_add("  ", TERM_WHITE);
+	message_add(" ", TERM_WHITE);
 
 	/* Hack -- outfit the player */
 	player_outfit();

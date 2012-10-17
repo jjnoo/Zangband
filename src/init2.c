@@ -1,4 +1,4 @@
-/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/07/19 13:49:40 $ */
+/* CVS: Last edit by $Author: sfuerst $ on $Date: 2000/08/14 10:36:34 $ */
 /* File: init2.c */
 
 /* Purpose: Initialization (part 2) -BEN- */
@@ -1869,6 +1869,122 @@ errr init_v_info(void)
 	return (0);
 }
 
+/*
+ * Initialize the "wild_choice_tree" array and the
+ * "wild_gen_data" array.
+ *
+ */
+errr init_w_info(void)
+{
+	errr err;
+
+	FILE *fp;
+
+	/* General buffer */
+	char buf[1024];
+
+
+	/* Later must add in raw file support later. */
+	C_MAKE(wild_choice_tree, max_w_node, wild_choice_tree_type);
+	C_MAKE(wild_gen_data, max_w_block, wild_gen_data_type);
+	C_MAKE(wild_temp_dist, max_wild_size, byte);
+
+	/*** Load the ascii template file ***/
+
+	/* Build the filename */
+	path_build(buf, 1024, ANGBAND_DIR_EDIT, "w_info.txt");
+
+	/* Open the file */
+	fp = my_fopen(buf, "r");
+
+	/* Parse it */
+	if (!fp) quit("Cannot open 'w_info.txt' file.");
+
+	/* Parse the file */
+	err = init_w_info_txt(fp, buf);
+
+	/* Close it */
+	my_fclose(fp);
+
+	/* Errors */
+	if (err)
+	{
+		cptr oops;
+
+		/* Error string */
+		oops = (((err > 0) && (err < PARSE_ERROR_MAX)) ? err_str[err] : "unknown");
+
+		/* Oops */
+		msg_format("Error %d at line %d of 'w_info.txt'.", err, error_line);
+		msg_format("Record %d contains a '%s' error.", error_idx, oops);
+		msg_format("Parsing '%s'.", buf);
+		msg_print(NULL);
+
+		/* Quit */
+		quit("Error in 'w_info.txt' file.");
+	}
+
+	/* Success */
+	return (0);
+}
+
+/*
+ * Initialize the field data structures
+ */
+errr init_t_info(void)
+{
+	errr err;
+
+	FILE *fp;
+
+	/* General buffer */
+	char buf[1024];
+
+	/* Later must add in python support. */
+	C_MAKE(t_info, max_t_idx, field_thaum);
+	C_MAKE(fld_list, max_fld_idx, field_type);
+	
+
+	/*** Load the ascii template file ***/
+
+	/* Build the filename */
+	path_build(buf, 1024, ANGBAND_DIR_EDIT, "t_info.txt");
+
+	/* Open the file */
+	fp = my_fopen(buf, "r");
+
+	/* Parse it */
+	if (!fp) quit("Cannot open 't_info.txt' file.");
+
+	/* Parse the file */
+	err = init_t_info_txt(fp, buf);
+
+	/* Close it */
+	my_fclose(fp);
+
+	/* Errors */
+	if (err)
+	{
+		cptr oops;
+
+		/* Error string */
+		oops = (((err > 0) && (err < PARSE_ERROR_MAX)) ? err_str[err] : "unknown");
+
+		/* Oops */
+		msg_format("Error %d at line %d of 't_info.txt'.", err, error_line);
+		msg_format("Record %d contains a '%s' error.", error_idx, oops);
+		msg_format("Parsing '%s'.", buf);
+		msg_print(NULL);
+
+		/* Quit */
+		quit("Error in 't_info.txt' file.");
+	}
+
+	/* Success */
+	return (0);
+}
+
+
 
 
 /*** Initialize others ***/
@@ -2408,6 +2524,9 @@ static errr init_towns(void)
 {
 	int i, j, k;
 
+	/*** Make store stock cache ***/
+	C_MAKE(store_cache, STORE_CACHE_AMNT, store_ptr);
+
 	/*** Prepare the Towns ***/
 
 	/* Allocate the towns */
@@ -2429,8 +2548,8 @@ static errr init_towns(void)
 			/* Assume full stock */
 			st_ptr->stock_size = STORE_INVEN_MAX;
 
-			/* Allocate the stock */
-			C_MAKE(st_ptr->stock, st_ptr->stock_size, object_type);
+			/* Do not allocate the stock yet. */
+			st_ptr->stock = NULL;
 
 			/* No table for the black market or home */
 			if ((j == STORE_BLACK) || (j == STORE_HOME)) continue;
@@ -2541,7 +2660,7 @@ static errr init_quests(void)
  */
 static errr init_other(void)
 {
-	int i, n;
+	int i, j, n;
 
 
 	/*** Prepare the "dungeon" information ***/
@@ -2560,6 +2679,45 @@ static errr init_other(void)
 		C_MAKE(cave[i], MAX_WID, cave_type);
 	}
 
+	/* Allocate temporary wilderness block */
+	for (i = 0; i < WILD_BLOCK_SIZE + 1; i++)
+	{
+		/* Allocate one row of the temp_block */
+		C_MAKE(temp_block[i], WILD_BLOCK_SIZE + 1, u16b);
+	}
+
+	/* Allocate cache of wilderness blocks */
+	for (i = 0; i < WILD_BLOCKS ; i++)
+	{
+		/* Allocate block */
+		C_MAKE(wild_cache[i], WILD_BLOCK_SIZE, cave_tp_ptr);
+
+		/* Allocate rows of a block */
+		for (j = 0; j < WILD_BLOCK_SIZE ; j++)
+		{
+			C_MAKE(wild_cache[i][j], WILD_BLOCK_SIZE, cave_type);
+		}
+	}
+
+	/*
+	 * The grid around the player is allocated in variable.c
+	 * since it doesn't take much memory.
+	 */
+
+	/* Allocate the wilderness itself */
+	C_MAKE(wild, max_wild_size, wild_tp_ptr);
+
+	for (i = 0; i < max_wild_size ; i++)
+	{
+		/* Allocate one row of the wilderness */
+		C_MAKE(wild[i], max_wild_size, wild_type);
+	}
+
+	/*** Prepare "vinfo" array ***/
+
+	/* Used by "update_view()" */
+	(void)vinfo_init();
+
 
 	/*** Prepare the various "bizarre" arrays ***/
 
@@ -2577,6 +2735,7 @@ static errr init_other(void)
 	/* Message variables */
 	C_MAKE(message__ptr, MESSAGE_MAX, u16b);
 	C_MAKE(message__buf, MESSAGE_BUF, char);
+	C_MAKE(message__color, MESSAGE_MAX, byte);
 
 	/* Hack -- No messages yet */
 	message__tail = MESSAGE_BUF;
@@ -3045,10 +3204,6 @@ void init_angband(void)
 	note("[Initializing arrays... (monsters)]");
 	if (init_r_info()) quit("Cannot initialize monsters");
 
-	/* Initialize wilderness array */
-	note("[Initializing arrays... (wilderness)]");
-	if (init_wilderness()) quit("Cannot initialize wilderness");
-
 	/* Initialize town array */
 	note("[Initializing arrays... (towns)]");
 	if (init_towns()) quit("Cannot initialize towns");
@@ -3099,6 +3254,9 @@ void init_angband(void)
 	/* Process that file */
 	process_pref_file(buf);
 
+	/* Initialise the fake monochrome flag */
+	fake_monochrome = (!use_graphics || streq(ANGBAND_SYS, "ibm")) ? TRUE:FALSE;
+	
 	/* Done */
 	note("[Initialization complete]");
 }
