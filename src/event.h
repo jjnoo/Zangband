@@ -31,7 +31,7 @@ extern bool generate_wilderness_callback(int y, int x);
 extern bool enter_wilderness_callback(int y, int x);
 extern bool leave_wilderness_callback(int y, int x);
 
-extern void store_examine_callback(object_type *o_ptr);
+extern void store_examine_callback(const object_type *o_ptr);
 extern bool monster_move_callback(int *mm, int m_idx);
 extern void create_monster_callback(int m_idx);
 extern void delete_monster_callback(int m_idx);
@@ -41,10 +41,7 @@ extern char inkey_borg_callback(bool inkey_base, bool inkey_xtra,
 extern char inkey_callback(char key);
 
 /* Birth */
-extern long get_world_callback(void);
-extern long get_player_class_callback(void);
-extern long get_player_realms_callback(void);
-extern long get_player_race_callback(void);
+extern long player_birth_callback(void);
 
 extern bool get_player_flags_callback(void);
 extern bool player_outfit_callback(void);
@@ -58,20 +55,20 @@ extern PyObject* object_load_callback(char *code);
 
 /* Object callbacks - object specific */
 extern bool object_eat_callback(object_type *o_ptr);
-extern bool object_browse_callback(object_type *o_ptr);
+extern bool object_browse_callback(const object_type *o_ptr);
 extern bool object_cast_callback(object_type *o_ptr);
-extern cptr object_save_callback(object_type *o_ptr);
+extern cptr object_save_callback(const object_type *o_ptr);
 extern void object_delete_callback(object_type *o_ptr);
-extern PyObject* object_copy_callback(object_type *o_ptr, object_type *j_ptr);
-extern long get_object_level_callback(object_type *o_ptr);
-extern long get_object_cost_callback(object_type *o_ptr);
-extern cptr get_object_name_callback(object_type *o_ptr);
-extern char get_object_d_char_callback(object_type *o_ptr);
-extern char get_object_x_char_callback(object_type *o_ptr);
-extern byte get_object_d_attr_callback(object_type *o_ptr);
-extern byte get_object_x_attr_callback(object_type *o_ptr);
-extern bool get_object_aware_callback(object_type *o_ptr);
-extern bool get_object_tried_callback(object_type *o_ptr);
+extern PyObject* object_copy_callback(object_type *o_ptr, const object_type *j_ptr);
+extern long get_object_level_callback(const object_type *o_ptr);
+extern long get_object_cost_callback(const object_type *o_ptr);
+extern cptr get_object_name_callback(const object_type *o_ptr);
+extern char get_object_d_char_callback(const object_type *o_ptr);
+extern char get_object_x_char_callback(const object_type *o_ptr);
+extern byte get_object_d_attr_callback(const object_type *o_ptr);
+extern byte get_object_x_attr_callback(const object_type *o_ptr);
+extern bool get_object_aware_callback(const object_type *o_ptr);
+extern bool get_object_tried_callback(const object_type *o_ptr);
 
 /* Object_kind callbacks */
 extern bool free_object_kind_list_callback(void);
@@ -80,10 +77,11 @@ extern bool init_object_kind_list_callback(void);
 /* Field callbacks */
 extern void field_delete_callback(field_type *f_ptr);
 extern PyObject* field_copy_callback(field_type *f_ptr, field_type *g_ptr);
-extern cptr field_save_callback(field_type *f_ptr);
+extern cptr field_save_callback(const field_type *f_ptr);
 extern PyObject* field_load_callback(char *code);
 
 extern bool use_skill_callback(void);
+extern bool process_command_callback(char command);
 
 /* Script callbacks */
 extern cptr get_script_window_line(int line);
@@ -114,23 +112,24 @@ extern cptr get_script_window_line(int line);
 #define DELETE_MONSTER_EVENT         23
 #define INKEY_BORG_EVENT             24
 #define INKEY_EVENT                  25
-#define GET_PLAYER_CLASS_EVENT       26
+/* XXX */
 #define GET_PLAYER_FLAGS_EVENT       27
 #define SENSE_INVENTORY_EVENT        28
 #define DESTROY_OBJECT_EVENT         29
-#define GET_PLAYER_RACE_EVENT        30
+/* XXX */
 #define OBJECT_CREATE_EVENT          31
 #define OBJECT_LOAD_EVENT            32
 #define PLAYER_OUTFIT_EVENT          33
 #define WILDERNESS_INIT_EVENT        34
 #define FREE_OBJECT_KIND_LIST_EVENT  35
 #define INIT_OBJECT_KIND_LIST_EVENT  36
-#define GET_PLAYER_REALMS_EVENT      37
-#define GET_WORLD_EVENT              38
+/* XXX */
 #define COPY_MONSTER_EVENT           39
 #define USE_SKILL_EVENT              40
 #define GET_SCRIPT_WINDOW_LINE_EVENT 41
 #define PLAY_GAME_EVENT              42
 #define FIELD_LOAD_EVENT             43
+#define PROCESS_COMMAND_EVENT        44
+#define PLAYER_BIRTH_EVENT           45
 
-#define MAX_EVENT                    44
+#define MAX_EVENT                    46

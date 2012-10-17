@@ -39,6 +39,10 @@ void reset_visuals(void)
 		/* Assume we will use the underlying values */
 		f_ptr->x_attr = f_ptr->d_attr;
 		f_ptr->x_char = f_ptr->d_char;
+		
+		/* No extra information */
+		f_ptr->w_attr = 0;
+		f_ptr->w_char = 0;
 	}
 
 	/* Extract default attr/char code for objects */
@@ -93,9 +97,9 @@ void reset_visuals(void)
 /*
  * Obtain the "flags" for an item
  */
-void object_flags(object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
+void object_flags(const object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
 {
-	object_kind *k_ptr = &k_info[o_ptr->k_idx];
+	const object_kind *k_ptr = &k_info[o_ptr->k_idx];
 
 	/* Base object */
 	(*f1) = k_ptr->flags1 | o_ptr->flags1;
@@ -115,9 +119,9 @@ void object_flags(object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
 /*
  * Obtain the "flags" for an item which are known to the player
  */
-void object_flags_known(object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
+void object_flags_known(const object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
 {
-	object_kind *k_ptr = &k_info[o_ptr->k_idx];
+	const object_kind *k_ptr = &k_info[o_ptr->k_idx];
 
 	/* Clear */
 	(*f1) = (*f2) = (*f3) = 0L;
@@ -159,42 +163,10 @@ void object_flags_known(object_type *o_ptr, u32b *f1, u32b *f2, u32b *f3)
 
 
 /*
- * Hack -- describe an item currently in a store's inventory
- * This allows an item to *look* like the player is "aware" of it
- */
-void object_desc_store(char *buf, object_type *o_ptr, int pref, int mode)
-{
-	/* Save the "aware" flag */
-	bool hack_aware = object_aware_p(o_ptr);
-
-	/* Save the "known" flag */
-	bool hack_known = (o_ptr->ident & (IDENT_KNOWN)) ? TRUE : FALSE;
-
-
-	/* Set the "known" flag */
-	o_ptr->ident |= (IDENT_KNOWN);
-
-	/* Force "aware" for description */
-	k_info[o_ptr->k_idx].aware = TRUE;
-
-
-	/* Describe the object */
-	object_desc(buf, o_ptr, pref, mode);
-
-
-	/* Restore "aware" flag */
-	k_info[o_ptr->k_idx].aware = hack_aware;
-
-	/* Clear the known flag */
-	if (!hack_known) o_ptr->ident &= ~(IDENT_KNOWN);
-}
-
-
-/*
  * Determine the "Activation" (if any) for an artifact
  * Return a string, or NULL for "no activation"
  */
-cptr item_activation(object_type *o_ptr)
+cptr item_activation(const object_type *o_ptr)
 {
 	u32b f1, f2, f3;
 
@@ -830,7 +802,7 @@ cptr item_activation(object_type *o_ptr)
 /*
  * Describe a "fully identified" item
  */
-bool identify_fully_aux(object_type *o_ptr)
+bool identify_fully_aux(const object_type *o_ptr)
 {
 	int                     i = 0, j, k;
 
@@ -1353,7 +1325,7 @@ s16b label_to_equip(int c)
 /*
  * Determine which equipment slot (if any) an item likes
  */
-s16b wield_slot(object_type *o_ptr)
+s16b wield_slot(const object_type *o_ptr)
 {
 	/* Slot for equipment */
 	switch (o_ptr->tval)
@@ -1533,6 +1505,356 @@ cptr describe_use(int i)
 }
 
 
+/*
+ * Hook to specify "weapon"
+ */
+bool item_tester_hook_weapon(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SWORD:
+		case TV_HAFTED:
+		case TV_POLEARM:
+		case TV_DIGGING:
+		case TV_BOW:
+		case TV_BOLT:
+		case TV_ARROW:
+		case TV_SHOT:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "melee weapon"
+ */
+bool item_tester_hook_melee_weapon(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SWORD:
+		case TV_HAFTED:
+		case TV_POLEARM:
+		case TV_DIGGING:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "non-sword melee"
+ */
+bool item_tester_hook_nonsword(const object_type *o_ptr)
+{
+	if ((o_ptr->tval == TV_HAFTED) || (o_ptr->tval == TV_POLEARM))
+	{
+		return (TRUE);
+	}
+
+	return (FALSE);
+}
+
+
+
+/*
+ * Hook to specify "ammo"
+ */
+bool item_tester_hook_ammo(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SHOT:
+		case TV_ARROW:
+		case TV_BOLT:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "Bows+arrows"
+ */
+bool item_tester_hook_fletcher(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SHOT:
+		case TV_ARROW:
+		case TV_BOLT:
+		case TV_BOW:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+
+/*
+ * Hook to specify "armour"
+ */
+bool item_tester_hook_armour(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_DRAG_ARMOR:
+		case TV_HARD_ARMOR:
+		case TV_SOFT_ARMOR:
+		case TV_SHIELD:
+		case TV_CLOAK:
+		case TV_CROWN:
+		case TV_HELM:
+		case TV_BOOTS:
+		case TV_GLOVES:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "soft armour"
+ */
+bool item_tester_hook_soft_armour(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SOFT_ARMOR:
+		case TV_CLOAK:
+		case TV_BOOTS:
+		case TV_GLOVES:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "hard armour"
+ */
+bool item_tester_hook_hard_armour(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_DRAG_ARMOR:
+		case TV_HARD_ARMOR:
+		case TV_SHIELD:
+		case TV_CROWN:
+		case TV_HELM:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+
+/*
+ * Hook to specify "helm or crown"
+ */
+bool item_tester_hook_helm(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_CROWN:
+		case TV_HELM:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+/*
+ * Hook to specify "pure hard armour"
+ */
+bool item_tester_hook_pure_hard_armour(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_DRAG_ARMOR:
+		case TV_HARD_ARMOR:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+
+
+/*
+ * Check if an object is weapon or armour (but not arrow, bolt, or shot)
+ */
+bool item_tester_hook_weapon_armour(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SWORD:
+		case TV_HAFTED:
+		case TV_POLEARM:
+		case TV_BOW:
+		case TV_DRAG_ARMOR:
+		case TV_HARD_ARMOR:
+		case TV_SOFT_ARMOR:
+		case TV_SHIELD:
+		case TV_CLOAK:
+		case TV_CROWN:
+		case TV_HELM:
+		case TV_BOOTS:
+		case TV_GLOVES:
+		{
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
+
+/*
+ * The "wearable" tester
+ */
+bool item_tester_hook_wear(const object_type *o_ptr)
+{
+	/* Check for a usable slot */
+	if (wield_slot(o_ptr) >= INVEN_WIELD) return (TRUE);
+
+	/* Assume not wearable */
+	return (FALSE);
+}
+
+
+/*
+ * Determine if something is rechargable.
+ */
+bool item_tester_hook_recharge(const object_type *o_ptr)
+{
+	/* Staffs */
+	if (o_ptr->tval == TV_STAFF) return (TRUE);
+
+	/* Wands */
+	if (o_ptr->tval == TV_WAND) return (TRUE);
+
+	/* Rods */
+	if (o_ptr->tval == TV_ROD) return (TRUE);
+
+	/* Nope */
+	return (FALSE);
+}
+
+/*
+ * Determine if something is a 'jewel'
+ */
+bool item_tester_hook_jewel(const object_type *o_ptr)
+{
+	/* Rings */
+	if (o_ptr->tval == TV_RING) return (TRUE);
+
+	/* Amulets */
+	if (o_ptr->tval == TV_AMULET) return (TRUE);
+
+	/* Nope */
+	return (FALSE);
+}
+
+
+
+/* Hack - match item_tester_tval */
+bool item_tester_hook_tval(const object_type *o_ptr)
+{
+	/* A match? */
+	if (o_ptr->tval == item_tester_tval) return (TRUE);
+
+	/* Nope */
+	return (FALSE);
+}
+
+
+bool item_tester_hook_is_blessed(const object_type *o_ptr)
+{
+	u32b f1, f2, f3;
+	object_flags(o_ptr, &f1, &f2, &f3);
+	
+	/* Is it blessed? */
+	if (f3 & TR3_BLESSED) return (TRUE);
+	
+	/* Check for unallowable weapons */
+	if ((o_ptr->tval == TV_SWORD) || (o_ptr->tval == TV_POLEARM)) return (FALSE);
+	
+	/* Everthing else is ok */
+	return (TRUE);
+}
+
+bool item_tester_hook_is_good(const object_type *o_ptr)
+{
+	if (cursed_p(o_ptr)) return (FALSE);
+	
+	/* Ego item or artifact */
+	if (o_ptr->xtra_name) return (TRUE);
+	
+	/* Positve AC bonus */
+	if (o_ptr->to_a > 0) return (TRUE);
+	
+	/* Good attack + defence */
+	if (o_ptr->to_h + o_ptr->to_d > 0) return (TRUE);
+	
+	/* Everthing else isn't good */
+	return (FALSE);
+}
+
+
+bool item_tester_hook_is_great(const object_type *o_ptr)
+{
+	if (cursed_p(o_ptr)) return (FALSE);
+	
+	/* Ego item or artifact */
+	if (o_ptr->xtra_name) return (TRUE);
+	
+	/* Everthing else isn't great */
+	return (FALSE);
+}
+
+
+
+bool item_tester_hook_is_book(const object_type *o_ptr)
+{
+	switch (o_ptr->tval)
+	{
+		case TV_SORCERY_BOOK:
+		case TV_NATURE_BOOK:
+		case TV_CHAOS_BOOK:
+		case TV_DEATH_BOOK:
+		case TV_TRUMP_BOOK:
+		case TV_ARCANE_BOOK:
+		case TV_LIFE_BOOK:
+		
+		/* It is a book */	
+		return (TRUE);
+	}
+	
+	/* It isn't a book */
+	return (FALSE);
+}
+
+
 /* Hack: Check if a spellbook is one of the realms we can use. -- TY */
 
 static bool check_book_realm(const byte book_tval)
@@ -1544,7 +1866,7 @@ static bool check_book_realm(const byte book_tval)
 /*
  * Check an item against the item tester info
  */
-bool item_tester_okay(object_type *o_ptr)
+bool item_tester_okay(const object_type *o_ptr)
 {
 	/* Hack -- allow listing empty slots */
 	if (item_tester_full) return (TRUE);
@@ -1635,7 +1957,7 @@ void display_inven(void)
 		attr = tval_to_attr[o_ptr->tval % 128];
 
 		/* Grey out charging items */
-		if (o_ptr->timeout)
+		if (o_ptr->timeout && (o_ptr->tval != TV_LITE))
 		{
 			attr = TERM_L_DARK;
 		}
@@ -1712,7 +2034,7 @@ void display_equip(void)
 		attr = tval_to_attr[o_ptr->tval % 128];
 
 		/* Grey out charging items */
-		if (o_ptr->timeout)
+		if (o_ptr->timeout && (o_ptr->tval != TV_LITE))
 		{
 			attr = TERM_L_DARK;
 		}
@@ -1818,7 +2140,7 @@ void show_inven(void)
 		out_color[k] = tval_to_attr[o_ptr->tval % 128];
 
 		/* Grey out charging items */
-		if (o_ptr->timeout)
+		if (o_ptr->timeout && (o_ptr->tval != TV_LITE))
 		{
 			out_color[k] = TERM_L_DARK;
 		}
@@ -1953,7 +2275,7 @@ void show_equip(void)
 		out_color[k] = tval_to_attr[o_ptr->tval % 128];
 
 		/* Grey out charging items */
-		if (o_ptr->timeout)
+		if (o_ptr->timeout && (o_ptr->tval != TV_LITE))
 		{
 			out_color[k] = TERM_L_DARK;
 		}

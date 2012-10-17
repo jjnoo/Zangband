@@ -1000,7 +1000,7 @@ static void health_redraw(void)
 		Term_putstr(COL_INFO, ROW_INFO, 12, TERM_WHITE, "[----------]");
 	}
 
-	/* Tracking a dead monster (???) */
+	/* Tracking a dead monster ??? */
 	else if (!m_list[p_ptr->health_who].hp < 0)
 	{
 		/* Indicate that the monster health is "unknown" */
@@ -1428,6 +1428,40 @@ static void fix_monster(void)
 
 
 /*
+ * Hack -- display visible monster list in sub-windows
+ */
+static void fix_visible(void)
+{
+	int j;
+
+	/* Scan windows */
+	for (j = 0; j < 8; j++)
+	{
+		term *old = Term;
+
+		/* No window */
+		if (!angband_term[j]) continue;
+
+		/* No relevant flags */
+		if (!(window_flag[j] & (PW_VISIBLE))) continue;
+
+		/* Activate */
+		Term_activate(angband_term[j]);
+
+		/* Display monster list */
+		display_visible();
+
+		/* Fresh */
+		Term_fresh();
+
+		/* Restore */
+		Term_activate(old);
+	}
+}
+
+
+
+/*
  * Hack -- display object recall in sub-windows
  */
 static void fix_object(void)
@@ -1472,7 +1506,7 @@ static void calc_spells(void)
 	int			i, j, k, levels;
 	int			num_allowed, num_known;
 
-	magic_type		*s_ptr;
+	const magic_type *s_ptr;
 	int use_realm1 = p_ptr->realm1 - 1;
 	int use_realm2 = p_ptr->realm2 - 1;
 	int which;
@@ -1992,27 +2026,27 @@ static void calc_torch(void)
 		/* Examine actual lites */
 		if ((i == INVEN_LITE) && (o_ptr->k_idx) && (o_ptr->tval == TV_LITE))
 		{
-			/* Torches (with fuel) provide some lite */
-			if ((o_ptr->sval == SV_LITE_TORCH) && (o_ptr->pval > 0))
-			{
-				p_ptr->cur_lite += 1;
-				continue;
-			}
-
-			/* Lanterns (with fuel) provide more lite */
-			if ((o_ptr->sval == SV_LITE_LANTERN) && (o_ptr->pval > 0))
-			{
-				p_ptr->cur_lite += 2;
-				continue;
-			}
-
 			/* Artifact Lites provide permanent, bright, lite */
-			if (o_ptr->flags3 & TR3_INSTA_ART)
+			if (o_ptr->flags3 & TR3_LITE)
 			{
 				p_ptr->cur_lite += 3;
 				continue;
 			}
-
+			
+			/* Lanterns (with fuel) provide more lite */
+			if ((o_ptr->sval == SV_LITE_LANTERN) && (o_ptr->timeout > 0))
+			{
+				p_ptr->cur_lite += 2;
+				continue;
+			}
+			
+			/* Torches (with fuel) provide some lite */
+			if ((o_ptr->sval == SV_LITE_TORCH) && (o_ptr->timeout > 0))
+			{
+				p_ptr->cur_lite += 1;
+				continue;
+			}
+			
 			/* notreached */
 		}
 		else
@@ -2028,8 +2062,6 @@ static void calc_torch(void)
 		}
 
 	}
-
-	/* The old radius 5 limit is no more... */
 
 	/*
 	 * Check if the player doesn't have a lite source,
@@ -2227,7 +2259,7 @@ static sint add_special_melee_skill(byte pclass, s16b weight, object_type *o_ptr
 /*
  * Calculate all class and race-based bonuses and penalties to missile skill -LM-
  */
-static sint add_special_missile_skill(byte pclass, s16b weight)
+static sint add_special_missile_skill(byte pclass)
 {
 	int add_skill = 0;
 
@@ -2272,7 +2304,6 @@ static sint add_special_missile_skill(byte pclass, s16b weight)
 	return (add_skill);
 }
 
-
 /*
  * Calculate the players current "state", taking into account
  * not only race/class intrinsics, but also objects being worn
@@ -2293,7 +2324,7 @@ static sint add_special_missile_skill(byte pclass, s16b weight)
  *
  * This function induces various "status" messages.
  */
-void calc_bonuses(void)
+static void calc_bonuses(void)
 {
 	int             i, j, hold;
 	int             old_speed;
@@ -2309,7 +2340,7 @@ void calc_bonuses(void)
 	bool old_heavy_wield = p_ptr->heavy_wield;
 	bool old_heavy_shoot = p_ptr->heavy_shoot;
 	bool old_icky_wield = p_ptr->icky_wield;
-
+	bool old_monk_armour = p_ptr->monk_armour_stat;
 
 	/* Save the old speed */
 	old_speed = p_ptr->pspeed;
@@ -2326,6 +2357,31 @@ void calc_bonuses(void)
 	/* Clear extra blows/shots */
 	extra_blows = extra_shots = 0;
 
+	/* Calculate monk armour status */
+	if (p_ptr->pclass == CLASS_MONK) 
+	{
+		u16b monk_arm_wgt = 0;
+
+		/* Weigh the armor */
+		monk_arm_wgt += inventory[INVEN_BODY ].weight;
+		monk_arm_wgt += inventory[INVEN_HEAD ].weight;
+		monk_arm_wgt += inventory[INVEN_ARM  ].weight;
+		monk_arm_wgt += inventory[INVEN_OUTER].weight;
+		monk_arm_wgt += inventory[INVEN_HANDS].weight;
+		monk_arm_wgt += inventory[INVEN_FEET ].weight;
+
+		if (monk_arm_wgt > (100 + (p_ptr->lev * 4)))
+		{
+			/* Burdened */
+			p_ptr->monk_armour_stat = TRUE;
+		}
+		else
+		{
+			/* Not burdened */
+			p_ptr->monk_armour_stat = FALSE;
+		}
+	}
+	
 	/* Clear the stat modifiers */
 	for (i = 0; i < A_MAX; i++) p_ptr->stat_add[i] = 0;
 
@@ -2461,16 +2517,20 @@ void calc_bonuses(void)
 				break;
 			case CLASS_MONK:
 				/* Unencumbered Monks become faster every 10 levels */
-				if (!(monk_heavy_armor()))
+				if (!p_ptr->monk_armour_stat)
+				{
 #ifndef MONK_HACK
 					if (!((p_ptr->prace == RACE_KLACKON) ||
 						(p_ptr->prace == RACE_SPRITE)))
 #endif /* MONK_HACK */
+					{
 						p_ptr->pspeed += (p_ptr->lev) / 10;
-
-				/* Free action if unencumbered at level 25 */
-				if ((p_ptr->lev > 24) && !monk_heavy_armor())
-					p_ptr->free_act = TRUE;
+					}
+				
+					/* Free action if unencumbered at level 25 */
+					if (p_ptr->lev > 24) p_ptr->free_act = TRUE;
+				}
+				
 				break;
 		}
 
@@ -2642,190 +2702,12 @@ void calc_bonuses(void)
 	}
 
 
-	/* I'm adding the mutations here for the lack of a better place... */
+	/* Effects of constantly acting mutations */
 	if (p_ptr->muta3)
 	{
-		/* Hyper Strength */
-		if (p_ptr->muta3 & MUT3_HYPER_STR)
-		{
-			p_ptr->stat_add[A_STR] += 4;
-		}
-
-		/* Puny */
-		if (p_ptr->muta3 & MUT3_PUNY)
-		{
-			p_ptr->stat_add[A_STR] -= 4;
-		}
-
-		/* Living computer */
-		if (p_ptr->muta3 & MUT3_HYPER_INT)
-		{
-			p_ptr->stat_add[A_INT] += 4;
-			p_ptr->stat_add[A_WIS] += 4;
-		}
-
-		/* Moronic */
-		if (p_ptr->muta3 & MUT3_MORONIC)
-		{
-			p_ptr->stat_add[A_INT] -= 4;
-			p_ptr->stat_add[A_WIS] -= 4;
-		}
-
-		if (p_ptr->muta3 & MUT3_RESILIENT)
-		{
-			p_ptr->stat_add[A_CON] += 4;
-		}
-
-		if (p_ptr->muta3 & MUT3_XTRA_FAT)
-		{
-			p_ptr->stat_add[A_CON] += 2;
-			p_ptr->pspeed -= 2;
-		}
-
-		if (p_ptr->muta3 & MUT3_ALBINO)
-		{
-			p_ptr->stat_add[A_CON] -= 4;
-		}
-
-		if (p_ptr->muta3 & MUT3_FLESH_ROT)
-		{
-			p_ptr->stat_add[A_CON] -= 2;
-			p_ptr->stat_add[A_CHR] -= 1;
-			p_ptr->regenerate = FALSE;
-			/* Cancel innate regeneration */
-		}
-
-		if (p_ptr->muta3 & MUT3_SILLY_VOI)
-		{
-			p_ptr->stat_add[A_CHR] -= 4;
-		}
-
-		if (p_ptr->muta3 & MUT3_BLANK_FAC)
-		{
-			p_ptr->stat_add[A_CHR] -= 1;
-		}
-
-		if (p_ptr->muta3 & MUT3_XTRA_EYES)
-		{
-			p_ptr->skill_fos += 15;
-			p_ptr->skill_srh += 15;
-		}
-
-		if (p_ptr->muta3 & MUT3_MAGIC_RES)
-		{
-			p_ptr->skill_sav += (15 + (p_ptr->lev / 5));
-		}
-
-		if (p_ptr->muta3 & MUT3_XTRA_NOIS)
-		{
-			p_ptr->skill_stl -= 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_INFRAVIS)
-		{
-			p_ptr->see_infra += 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_XTRA_LEGS)
-		{
-			p_ptr->pspeed += 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_SHORT_LEG)
-		{
-			p_ptr->pspeed -= 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_ELEC_TOUC)
-		{
-			p_ptr->sh_elec = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_FIRE_BODY)
-		{
-			p_ptr->sh_fire = TRUE;
-			p_ptr->lite = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_WART_SKIN)
-		{
-			p_ptr->stat_add[A_CHR] -= 2;
-			p_ptr->to_a += 5;
-			p_ptr->dis_to_a += 5;
-		}
-
-		if (p_ptr->muta3 & MUT3_SCALES)
-		{
-			p_ptr->stat_add[A_CHR] -= 1;
-			p_ptr->to_a += 10;
-			p_ptr->dis_to_a += 10;
-		}
-
-		if (p_ptr->muta3 & MUT3_IRON_SKIN)
-		{
-			p_ptr->stat_add[A_DEX] -= 1;
-			p_ptr->to_a += 25;
-			p_ptr->dis_to_a += 25;
-		}
-
-		if (p_ptr->muta3 & MUT3_WINGS)
-		{
-			p_ptr->ffall = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_FEARLESS)
-		{
-			p_ptr->resist_fear = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_REGEN)
-		{
-			p_ptr->regenerate = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_ESP)
-		{
-			p_ptr->telepathy = TRUE;
-		}
-
-		if (p_ptr->muta3 & MUT3_LIMBER)
-		{
-			p_ptr->stat_add[A_DEX] += 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_ARTHRITIS)
-		{
-			p_ptr->stat_add[A_DEX] -= 3;
-		}
-
-		if (p_ptr->muta3 & MUT3_MOTION)
-		{
-			p_ptr->free_act = TRUE;
-			p_ptr->skill_stl += 1;
-		}
-
-#ifdef MUT3_SUS_STATS
-		if (p_ptr->muta3 & MUT3_SUS_STATS)
-		{
-			p_ptr->sustain_con = TRUE;
-			if (p_ptr->lev > 9)
-				p_ptr->sustain_str = TRUE;
-			if (p_ptr->lev > 19)
-				p_ptr->sustain_dex = TRUE;
-			if (p_ptr->lev > 29)
-				p_ptr->sustain_wis = TRUE;
-			if (p_ptr->lev > 39)
-				p_ptr->sustain_int = TRUE;
-			if (p_ptr->lev > 49)
-				p_ptr->sustain_chr = TRUE;
-		}
-#endif /* MUT3_SUS_STATS */
-
-		if (p_ptr->muta3 & MUT3_ILL_NORM)
-		{
-			p_ptr->stat_add[A_CHR] = 0;
-		}
+		mutation_effect();
 	}
+	
 
 	/* Remove flags that were not in Moria */
 	if (ironman_moria)
@@ -2978,7 +2860,7 @@ void calc_bonuses(void)
 	}
 
 	/* Monks get extra ac for armour _not worn_ */
-	if ((p_ptr->pclass == CLASS_MONK) && !monk_heavy_armor())
+	if ((p_ptr->pclass == CLASS_MONK) && (!p_ptr->monk_armour_stat))
 	{
 		if (!(inventory[INVEN_BODY].k_idx))
 		{
@@ -3302,20 +3184,58 @@ void calc_bonuses(void)
 			case SV_SLING:
 			{
 				p_ptr->ammo_tval = TV_SHOT;
+				p_ptr->ammo_mult = 2;
+				p_ptr->bow_energy = 50;
 				break;
 			}
 
 			case SV_SHORT_BOW:
+			{
+				p_ptr->ammo_tval = TV_ARROW;
+				p_ptr->ammo_mult = 2;
+				p_ptr->bow_energy = 100;
+				break;
+			}
 			case SV_LONG_BOW:
 			{
 				p_ptr->ammo_tval = TV_ARROW;
+				
+				if (p_ptr->stat_use[A_STR] >= 16)
+				{
+					p_ptr->ammo_mult = 3;
+				}
+				else
+				{
+					/* weak players cannot use a longbow well */
+					p_ptr->ammo_mult = 2;
+				}
+				
+				p_ptr->bow_energy = 100;
 				break;
 			}
 
 			case SV_LIGHT_XBOW:
+			{
+				p_ptr->ammo_tval = TV_BOLT;
+				p_ptr->ammo_mult = 4;
+				p_ptr->bow_energy = 120;
+				break;
+			}
+			
 			case SV_HEAVY_XBOW:
 			{
 				p_ptr->ammo_tval = TV_BOLT;
+				
+				p_ptr->ammo_mult = 5;
+				if (p_ptr->stat_use[A_DEX] >= 16)
+				{
+					p_ptr->bow_energy = 150;
+				}
+				else
+				{
+					/* players with low dex will take longer to load */
+					p_ptr->bow_energy = 200;
+				}
 				break;
 			}
 		}
@@ -3374,8 +3294,7 @@ void calc_bonuses(void)
 		}
 	}
 	/* Add all class and race-specific adjustments to missile Skill. -LM- */
-	p_ptr->skill_thb += add_special_missile_skill (p_ptr->pclass,
-		 o_ptr->weight);
+	p_ptr->skill_thb += add_special_missile_skill (p_ptr->pclass);
 
 
 	/* Examine the "main weapon" */
@@ -3481,7 +3400,8 @@ void calc_bonuses(void)
 
 
 	/* Different calculation for monks with empty hands */
-	else if ((p_ptr->pclass == CLASS_MONK) && monk_empty_hands())
+	else if ((p_ptr->pclass == CLASS_MONK) &&
+				 (!(inventory[INVEN_WIELD].k_idx)))
 	{
 		p_ptr->num_blow = 2;
 
@@ -3492,11 +3412,11 @@ void calc_bonuses(void)
 		if (p_ptr->lev > 44) p_ptr->num_blow++;
 		if (p_ptr->lev > 49) p_ptr->num_blow++;
 
-		if (monk_heavy_armor()) p_ptr->num_blow /= 2;
-
-		p_ptr->num_blow += extra_blows;
-
-		if (!monk_heavy_armor())
+		if (p_ptr->monk_armour_stat)
+		{
+			p_ptr->num_blow /= 2;
+		}
+		else
 		{
 			p_ptr->to_h += (p_ptr->lev / 3);
 			p_ptr->to_d += (p_ptr->lev / 3);
@@ -3504,6 +3424,8 @@ void calc_bonuses(void)
 			p_ptr->dis_to_h += (p_ptr->lev / 3);
 			p_ptr->dis_to_d += (p_ptr->lev / 3);
 		}
+		
+		p_ptr->num_blow += extra_blows;
 	}
 	/* Everyone gets two blows if not wielding a weapon. -LM- */
 	else if (!o_ptr->k_idx) p_ptr->num_blow = 2;
@@ -3513,7 +3435,6 @@ void calc_bonuses(void)
 
 	/* Assume okay */
 	p_ptr->icky_wield = FALSE;
-	monk_armour_aux = FALSE;
 
 	/* Extra bonus for warriors... */
 	if (p_ptr->pclass == CLASS_WARRIOR)
@@ -3540,12 +3461,6 @@ void calc_bonuses(void)
 		/* Icky weapon */
 		p_ptr->icky_wield = TRUE;
 	}
-
-	if (monk_heavy_armor())
-	{
-		monk_armour_aux = TRUE;
-	}
-
 
 	/* Affect Skill -- stealth (bonus one) */
 	p_ptr->skill_stl += 1;
@@ -3664,9 +3579,10 @@ void calc_bonuses(void)
 		}
 	}
 
-	if (p_ptr->pclass == CLASS_MONK && (monk_armour_aux != monk_notify_aux))
+	if (p_ptr->pclass == CLASS_MONK &&
+		 (p_ptr->monk_armour_stat != old_monk_armour))
 	{
-		if (monk_heavy_armor())
+		if (p_ptr->monk_armour_stat)
 		{
 			msg_print("The weight of your armor disrupts your balance.");
 
@@ -3677,8 +3593,6 @@ void calc_bonuses(void)
 		}
 		else
 			msg_print("You regain your balance.");
-
-		monk_notify_aux = monk_armour_aux;
 	}
 
 	p_ptr->align = friend_align;
@@ -4074,6 +3988,13 @@ void window_stuff(void)
 		p_ptr->window &= ~(PW_MONSTER);
 		fix_monster();
 	}
+	
+	/* Display monster list */
+	if (p_ptr->window & (PW_VISIBLE))
+	{
+		p_ptr->window &= ~(PW_VISIBLE);
+		fix_visible();
+	}
 
 	/* Display object recall */
 	if (p_ptr->window & (PW_OBJECT))
@@ -4099,29 +4020,4 @@ void handle_stuff(void)
 	if (p_ptr->window) window_stuff();
 }
 
-
-bool monk_empty_hands(void)
-{
-	if (p_ptr->pclass != CLASS_MONK) return FALSE;
-
-	return !(inventory[INVEN_WIELD].k_idx);
-}
-
-
-bool monk_heavy_armor(void)
-{
-	u16b monk_arm_wgt = 0;
-
-	if (p_ptr->pclass != CLASS_MONK) return FALSE;
-
-	/* Weight the armor */
-	monk_arm_wgt += inventory[INVEN_BODY ].weight;
-	monk_arm_wgt += inventory[INVEN_HEAD ].weight;
-	monk_arm_wgt += inventory[INVEN_ARM  ].weight;
-	monk_arm_wgt += inventory[INVEN_OUTER].weight;
-	monk_arm_wgt += inventory[INVEN_HANDS].weight;
-	monk_arm_wgt += inventory[INVEN_FEET ].weight;
-
-	return (monk_arm_wgt > (100 + (p_ptr->lev * 4)));
-}
 

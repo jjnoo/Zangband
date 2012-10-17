@@ -58,7 +58,8 @@ void do_cmd_redraw(void)
 	p_ptr->window |= (PW_INVEN | PW_EQUIP | PW_SPELL | PW_PLAYER);
 
 	/* Window stuff */
-	p_ptr->window |= (PW_MESSAGE | PW_OVERHEAD | PW_DUNGEON | PW_MONSTER | PW_OBJECT);
+	p_ptr->window |= (PW_MESSAGE | PW_OVERHEAD | PW_DUNGEON |
+		 PW_MONSTER | PW_VISIBLE | PW_OBJECT);
 
 	/* Hack -- update */
 	handle_stuff();
@@ -138,6 +139,7 @@ void resize_map(void)
 	Term_fresh();
 }
 
+
 /*
  * Redraw a term when it is resized
  */
@@ -156,7 +158,8 @@ void redraw_window(void)
 	p_ptr->window |= (PW_INVEN | PW_EQUIP | PW_SPELL | PW_PLAYER);
 
 	/* Window stuff */
-	p_ptr->window |= (PW_MESSAGE | PW_OVERHEAD | PW_DUNGEON | PW_MONSTER | PW_OBJECT);
+	p_ptr->window |= (PW_MESSAGE | PW_OVERHEAD | PW_DUNGEON |
+		 PW_MONSTER | PW_VISIBLE | PW_OBJECT);
 
 	/* Hack -- update */
 	handle_stuff();
@@ -395,6 +398,7 @@ void do_cmd_messages(void)
 	screen_load();
 }
 
+
 /*
  * Copy the indicated options out from the
  * option_info[] data structure into the
@@ -493,7 +497,7 @@ struct cheat_option_type
 /*
  * Cheating options
  */
-static cheat_option_type cheat_info[CHEAT_MAX] =
+static const cheat_option_type cheat_info[CHEAT_MAX] =
 {
 	{ &cheat_peek,		0x0001,
 	"cheat_peek",		"Peek into object creation" },
@@ -612,7 +616,7 @@ static void do_cmd_options_cheat(cptr info)
 }
 
 
-static cheat_option_type autosave_info[2] =
+static const cheat_option_type autosave_info[2] =
 {
 	{ (bool *)(&autosave_l), 0x0001,
 	  "autosave_l", "Autosave when entering new levels" },
@@ -768,6 +772,17 @@ static void do_cmd_options_aux(int page, cptr info)
 		if (option_info[i].o_page == page) opt[n++] = i;
 	}
 
+
+	/* Paranoia */
+	if (n == 0)
+	{
+		/* There are no options */
+		msg_print("There are no available options there at the moment.");
+		msg_print(NULL);
+		
+		/* Bail out */
+		return;
+	}
 
 	/* Clear screen */
 	Term_clear();
@@ -2905,15 +2920,6 @@ void do_cmd_feeling(void)
 }
 
 
-
-
-
-/*
- * Encode the screen colors
- */
-static char hack[17] = "dwsorgbuDWvyRGBU";
-
-
 /*
  * Hack -- load a screen dump from a file
  */
@@ -2982,7 +2988,7 @@ void do_cmd_load_screen(void)
 			for (i = 0; i < 16; i++)
 			{
 				/* Use attr matches */
-				if (hack[i] == buf[x]) a = i;
+				if (color_char[i] == buf[x]) a = i;
 			}
 
 			/* Hack -- fake monochrome */
@@ -3104,7 +3110,7 @@ void do_cmd_save_screen(void)
 				(void)(Term_what(x, y, &a, &c));
 
 				/* Dump it */
-				buf[x] = hack[a&0x0F];
+				buf[x] = color_char[a&0x0F];
 			}
 
 			/* Terminate */
@@ -3711,8 +3717,7 @@ static void do_cmd_knowledge_quests(void)
 			p_ptr->inside_quest = i;
 
 			/* Get the quest text */
-			init_flags = INIT_SHOW_TEXT;
-			process_dungeon_file("q_info.txt", 0, 0, 0, 0);
+			process_dungeon_file("q_info.txt", INIT_SHOW_TEXT);
 
 			/* Reset the old quest number */
 			p_ptr->inside_quest = old_quest;
@@ -3931,7 +3936,7 @@ void do_cmd_time(void)
 				  min, (hour < 12) ? "AM" : "PM");
 
 	/* Find the path */
-	if (!randint0(10) || p_ptr->image)
+	if (one_in_(10) || p_ptr->image)
 	{
 		path_build(buf, 1024, ANGBAND_DIR_FILE, "timefun.txt");
 	}
@@ -3987,7 +3992,7 @@ void do_cmd_time(void)
 			num++;
 
 			/* Apply the randomizer */
-			if (!randint0(num)) strcpy(desc, buf + 2);
+			if (one_in_(num)) strcpy(desc, buf + 2);
 
 			/* Next... */
 			continue;

@@ -51,7 +51,7 @@ static bool get_enemy_dir(monster_type *m_ptr, int *mm)
 		if (!are_enemies(m_ptr, t_ptr)) continue;
 
 		/* Mega Hack - Monster must be close */
-		if (abs(m_ptr->fy - t_ptr->fy) + abs(m_ptr->fx - t_ptr->fx) > 20)
+		if (ABS(m_ptr->fy - t_ptr->fy) + ABS(m_ptr->fx - t_ptr->fx) > 20)
 		{
 			continue;
 		}
@@ -168,8 +168,6 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 
 	char m_name[160];
 
-	bool seen = m_ptr->ml;
-
 	/* Can the player be aware of this attack? */
 	bool known = (m_ptr->cdis <= MAX_SIGHT);
 
@@ -182,9 +180,9 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 	/* Wake it up */
 	m_ptr->csleep = 0;
 
-	if (m_ptr->invulner && randint0(PENETRATE_INVULNERABILITY))
+	if (m_ptr->invulner && !one_in_(PENETRATE_INVULNERABILITY))
 	{
-		if (seen)
+		if (m_ptr->ml)
 		{
 			msg_format("%^s is unharmed.", m_name);
 		}
@@ -219,9 +217,9 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 			if (known)
 			{
 				/* Unseen death by normal attack */
-				if (!seen)
+				if (!m_ptr->ml)
 				{
-					mon_fight = TRUE;
+					p_ptr->mon_fight = TRUE;
 				}
 				/* Death by special attack */
 				else if (note)
@@ -241,8 +239,8 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 			}
 
 			/* Generate treasure */
-			(void) monster_death(m_idx);
-
+			(void)monster_death(m_idx, TRUE);
+			
 			/* Delete the monster */
 			delete_monster_idx(m_idx);
 
@@ -253,8 +251,6 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 			return;
 		}
 	}
-
-#ifdef ALLOW_FEAR
 
 	/* Mega-Hack -- Pain cancels fear */
 	if (m_ptr->monfear && (dam > 0))
@@ -304,8 +300,6 @@ void mon_take_hit_mon(int m_idx, int dam, bool *fear, cptr note)
 		}
 	}
 
-#endif /* ALLOW_FEAR */
-
 	/* Not dead yet */
 	return;
 }
@@ -328,16 +322,12 @@ static int mon_will_run(int m_idx)
 {
 	monster_type *m_ptr = &m_list[m_idx];
 
-#ifdef ALLOW_TERROR
-
 	monster_race *r_ptr = &r_info[m_ptr->r_idx];
 
 	u16b p_lev, m_lev;
 	u16b p_chp, p_mhp;
 	u16b m_chp, m_mhp;
 	u32b p_val, m_val;
-
-#endif
 
 	/* Friends can be commanded to avoid the player */
 	if (is_pet(m_ptr))
@@ -352,8 +342,6 @@ static int mon_will_run(int m_idx)
 
 	/* All "afraid" monsters will run away */
 	if (m_ptr->monfear) return (TRUE);
-
-#ifdef ALLOW_TERROR
 
 	/* Nearby monsters will not become terrified */
 	if (m_ptr->cdis <= 5) return (FALSE);
@@ -383,16 +371,10 @@ static int mon_will_run(int m_idx)
 	/* Strong players scare strong monsters */
 	if (p_val * m_mhp > m_val * p_mhp) return (TRUE);
 
-#endif
-
 	/* Assume no terror */
 	return (FALSE);
 }
 
-
-
-
-#ifdef MONSTER_FLOW
 
 /*
  * Choose the "best" direction for "flowing"
@@ -416,7 +398,7 @@ static int mon_will_run(int m_idx)
  * being close enough to chase directly.  I have no idea what will
  * happen if you combine "smell" with low "aaf" values.
  */
-static bool get_moves_aux(int m_idx, int *yp, int *xp)
+static void get_moves_aux(int m_idx, int *yp, int *xp)
 {
 	int py = p_ptr->py;
 	int px = p_ptr->px;
@@ -427,40 +409,34 @@ static bool get_moves_aux(int m_idx, int *yp, int *xp)
 
 	monster_type *m_ptr = &m_list[m_idx];
 	monster_race *r_ptr = &r_info[m_ptr->r_idx];
-
-	/* Monster flowing disabled */
-	if (!flow_by_sound) return (FALSE);
-
+	
 	/* Monster can go through rocks */
-	if (r_ptr->flags2 & RF2_PASS_WALL) return (FALSE);
-	if (r_ptr->flags2 & RF2_KILL_WALL) return (FALSE);
+	if (r_ptr->flags2 & RF2_PASS_WALL) return;
+	if (r_ptr->flags2 & RF2_KILL_WALL) return;
 
 	/* Monster location */
 	y1 = m_ptr->fy;
 	x1 = m_ptr->fx;
 
 	/* Monster grid */
-	c_ptr = area(y1,x1);
+	c_ptr = area(y1, x1);
 
 	/* The player is not currently near the monster grid */
 	if (c_ptr->when < area(py, px)->when)
 	{
 		/* The player has never been near the monster grid */
-		if (!c_ptr->when) return (FALSE);
-
-		/* The monster is not allowed to track the player */
-		if (!flow_by_smell) return (FALSE);
+		if (!c_ptr->when) return;
 	}
 
 	/* Non-pets are too far away to notice the player */
 	if (!is_pet(m_ptr))
 	{
-		if (c_ptr->cost > MONSTER_FLOW_DEPTH) return (FALSE);
-		if (c_ptr->cost > r_ptr->aaf) return (FALSE);
+		if (c_ptr->cost > MONSTER_FLOW_DEPTH) return;
+		if (c_ptr->cost > r_ptr->aaf) return;
 	}
 
-	/* Hack -- Player can see us, run towards him */
-	if (player_has_los_grid(c_ptr)) return (FALSE);
+	/* Hack XXX XXX -- Player can see us, run towards him */
+	if (player_has_los_grid(c_ptr)) return;
 
 	/* Check nearby grids, diagonals first */
 	for (i = 7; i >= 0; i--)
@@ -470,7 +446,7 @@ static bool get_moves_aux(int m_idx, int *yp, int *xp)
 		x = x1 + ddx_ddd[i];
 
 		/* Ignore locations off of edge */
-		if (!in_bounds2(y, x)) continue;
+		if (!in_bounds2(y, x)) return;
 
 		c_ptr = area(y, x);
 
@@ -491,12 +467,6 @@ static bool get_moves_aux(int m_idx, int *yp, int *xp)
 		(*yp) = py + 16 * ddy_ddd[i];
 		(*xp) = px + 16 * ddx_ddd[i];
 	}
-
-	/* No legal move (?) */
-	if (!when) return (FALSE);
-
-	/* Success */
-	return (TRUE);
 }
 
 
@@ -515,9 +485,6 @@ static bool get_fear_moves_aux(int m_idx, int *yp, int *xp)
 
 	monster_type *m_ptr = &m_list[m_idx];
 	monster_race *r_ptr = &r_info[m_ptr->r_idx];
-
-	/* Monster flowing disabled */
-	if (!flow_by_sound) return (FALSE);
 
 	/* Player location */
 	py = p_ptr->py;
@@ -592,7 +559,6 @@ static bool get_fear_moves_aux(int m_idx, int *yp, int *xp)
 	return (TRUE);
 }
 
-#endif /* MONSTER_FLOW */
 
 /*
  * Hack -- Precompute a bunch of calls to distance() in find_safety() and
@@ -783,15 +749,11 @@ static bool find_safety(int m_idx, int *yp, int *xp)
 			/* Skip locations in a wall */
 			if (!cave_floor_grid(c_ptr)) continue;
 
-			/* Check for "availability" (if monsters can flow) */
-			if (flow_by_sound)
-				{
-				/* Ignore grids very far from the player */
-				if (c_ptr->when < area(py, px)->when) continue;
+			/* Ignore grids very far from the player */
+			if (c_ptr->when < area(py, px)->when) continue;
 
-				/* Ignore too-distant grids */
-				if (c_ptr->cost > area(fy, fx)->cost + 2 * d) continue;
-			}
+			/* Ignore too-distant grids */
+			if (c_ptr->cost > area(fy, fx)->cost + 2 * d) continue;
 
 			/* Check for absence of shot (more or less) */
 			if (clean_shot(fy, fx, y, x, FALSE))
@@ -939,14 +901,8 @@ static bool get_moves(int m_idx, int *mm)
 	bool         will_run = mon_will_run(m_idx);
 	cave_type	*c_ptr;
 
-#ifdef MONSTER_FLOW
 	/* Flow towards the player */
-	if (flow_by_sound)
-	{
-		/* Flow towards the player */
-		(void)get_moves_aux(m_idx, &y2, &x2);
-	}
-#endif
+	(void)get_moves_aux(m_idx, &y2, &x2);
 
 	/* Extract the "pseudo-direction" */
 	y = m_ptr->fy - y2;
@@ -960,7 +916,8 @@ static bool get_moves(int m_idx, int *mm)
 	 */
 		if ((r_ptr->flags1 & RF1_FRIENDS) &&
 			 (r_ptr->flags3 & RF3_ANIMAL) &&
-			 !(r_ptr->flags2 & (RF2_PASS_WALL | RF2_KILL_WALL)))
+			 !(r_ptr->flags2 & (RF2_PASS_WALL | RF2_KILL_WALL)) &&
+			 smart_packs)
 		{
 			int i, room = 0;
 
@@ -1054,12 +1011,8 @@ static bool get_moves(int m_idx, int *mm)
 			}
 			else
 			{
-				/* Attempt to avoid the player */
-				if (flow_by_sound)
-				{
-					/* Adjust movement */
-					(void)get_fear_moves_aux(m_idx, &y, &x);
-				}
+				/* Adjust movement */
+				(void)get_fear_moves_aux(m_idx, &y, &x);
 			}
 		}
 	}
@@ -1316,7 +1269,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 
 	if (!see_either && known)
 	{
-		mon_fight = TRUE;
+		p_ptr->mon_fight = TRUE;
 	}
 
 	/* Scan through all four blows */
@@ -1335,12 +1288,12 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 		int d_dice = r_ptr->blow[ap_cnt].d_dice;
 		int d_side = r_ptr->blow[ap_cnt].d_side;
 
-		/* Stop attacking if the target dies! */
+		/* Stop attacking if the target teleports away */
 		if (t_ptr->fx != x_saver || t_ptr->fy != y_saver)
 			break;
 
 		/* Stop attacking if the aggressor dies (fire sheath etc.) */
-		if (m_ptr->hp < 0) return TRUE;
+		if ((!m_ptr->r_idx) || (!t_ptr->r_idx)) return TRUE;
 
 		/* Hack -- no more attacks */
 		if (!method) break;
@@ -1499,7 +1452,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 
 			case RBM_EXPLODE:
 				{
-					if (see_either) disturb(1, 0);
+					if (see_either) disturb(TRUE);
 					act = "explodes.";
 					explode = TRUE;
 					touched = FALSE;
@@ -1566,10 +1519,46 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 			/* Message */
 			if (act && see_either)
 			{
-				if ((p_ptr->image) && (randint1(3) == 1))
+				/* Look to see if we've spotted a mimic */
+				if ((m_ptr->smart & SM_MIMIC) && see_m)
+				{
+					char m_name2[80];
+		
+					/* Get name */
+					monster_desc (m_name2, m_ptr, 0x88);
+		
+					/* Toggle flag */
+					m_ptr->smart &= ~(SM_MIMIC);
+					
+					/* It is in the monster list now */
+					update_mon_vis(m_ptr->r_idx, 1);
+		
+					/* We've spotted it */
+					msg_format("You see %s!", m_name2);
+				}
+
+				/* Look to see if we've spotted a mimic */
+				if ((t_ptr->smart & SM_MIMIC) && see_t)
+				{
+					char t_name2[80];
+		
+					/* Get name */
+					monster_desc (t_name2, t_ptr, 0x88);
+					
+					/* Toggle flag */
+					t_ptr->smart &= ~(SM_MIMIC);
+
+					/* It is in the monster list now */
+					update_mon_vis(t_ptr->r_idx, 1);
+		
+					/* We've spotted it */
+					msg_format("You see %s!", t_name2);
+				}
+
+				if ((p_ptr->image) && one_in_(3))
 				{
 					strfmt(temp, "%s %s.",
-					       silly_attacks[randint1(MAX_SILLY_ATTACK)-1],t_name);
+					       silly_attacks[randint0(MAX_SILLY_ATTACK)],t_name);
 				}
 				else
 					strfmt(temp, act, t_name);
@@ -1629,7 +1618,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 			case RBE_EAT_GOLD:
 				{
 					pt = damage = 0;
-					if (randint1(2) == 1) blinked = TRUE;
+					if (one_in_(2)) blinked = TRUE;
 					break;
 				}
 
@@ -1767,7 +1756,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 						{
 							blinked = FALSE;
 							msg_format("%^s is suddenly very hot!", m_name);
-							if (t_ptr->ml)
+							if (see_t)
 								tr_ptr->r_flags2 |= RF2_AURA_FIRE;
 						}
 						project(t_idx, 0, m_ptr->fy, m_ptr->fx,
@@ -1784,7 +1773,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 						{
 							blinked = FALSE;
 							msg_format("%^s is suddenly very cold!", m_name);
-							if (t_ptr->ml)
+							if (see_t)
 								tr_ptr->r_flags3 |= RF3_AURA_COLD;
 						}
 						project(t_idx, 0, m_ptr->fy, m_ptr->fx,
@@ -1800,7 +1789,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 						{
 							blinked = FALSE;
 							msg_format("%^s gets zapped!", m_name);
-							if (t_ptr->ml)
+							if (see_t)
 								tr_ptr->r_flags2 |= RF2_AURA_ELEC;
 						}
 						project(t_idx, 0, m_ptr->fy, m_ptr->fx,
@@ -1813,7 +1802,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 			}
 		}
 
-		/* Monster missed player */
+		/* Monster missed the monster */
 		else
 		{
 			/* Analyze failed attacks */
@@ -1882,7 +1871,7 @@ static bool monst_attack_monst(int m_idx, int t_idx)
 		}
 		else if (known)
 		{
-			mon_fight = TRUE;
+			p_ptr->mon_fight = TRUE;
 		}
 
 		teleport_away(m_idx, MAX_SIGHT * 2 + 5);
@@ -1931,6 +1920,9 @@ static void process_monster(int m_idx)
 
 	monster_type    *y_ptr;
 
+	
+	char m_name[80];
+
 	bool            do_turn;
 	bool            do_move;
 	bool            do_view;
@@ -1949,10 +1941,10 @@ static void process_monster(int m_idx)
 	if (r_ptr->flags2 & (RF2_QUANTUM))
 	{
 		/* Sometimes skip move */
-		if (!randint0(2)) return;
+		if (one_in_(2)) return;
 
 		/* Sometimes die */
-		if (!randint0((m_idx % 100) + 10) && !(r_ptr->flags1 & RF1_QUESTOR))
+		if (one_in_((m_idx % 100) + 10) && !(r_ptr->flags1 & RF1_QUESTOR))
 		{
 			bool sad = FALSE;
 
@@ -1971,7 +1963,7 @@ static void process_monster(int m_idx)
 			}
 
 			/* Generate treasure, etc */
-			(void) monster_death(m_idx);
+			(void)monster_death(m_idx, TRUE);
 
 			/* Delete the monster */
 			delete_monster_idx(m_idx);
@@ -1993,7 +1985,7 @@ static void process_monster(int m_idx)
 	c_ptr = area(oy,ox);
 
 	/* Process fields under the monster. */
-	field_hook(&c_ptr->fld_idx, FIELD_ACT_MONSTER_ON, (void *) m_ptr);
+	field_hook(&c_ptr->fld_idx, FIELD_ACT_MONSTER_ON, (vptr) m_ptr);
 
 	/* Handle "sleep" */
 	if (m_ptr->csleep)
@@ -2042,7 +2034,7 @@ static void process_monster(int m_idx)
 				m_ptr->csleep = 0;
 
 				/* Notice the "waking up" */
-				if (m_ptr->ml)
+				if ((m_ptr->ml) && (!(m_ptr->smart & SM_MIMIC)))
 				{
 					char m_name[80];
 
@@ -2133,7 +2125,7 @@ static void process_monster(int m_idx)
 			m_ptr->confused = 0;
 
 			/* Message if visible */
-			if (m_ptr->ml)
+			if ((m_ptr->ml) && (!(m_ptr->smart & SM_MIMIC)))
 			{
 				char m_name[80];
 
@@ -2212,8 +2204,6 @@ static void process_monster(int m_idx)
 	}
 
 
-
-
 	/* Attempt to "multiply" if able and allowed */
 	if ((r_ptr->flags2 & RF2_MULTIPLY) && (num_repro < MAX_REPRO))
 	{
@@ -2232,7 +2222,7 @@ static void process_monster(int m_idx)
 		}
 
 		/* Hack -- multiply slower in crowded areas */
-		if ((k < 4) && (!k || !randint0(k * MON_MULT_ADJ)))
+		if ((k < 4) && (!k || one_in_(k * MON_MULT_ADJ)))
 		{
 			/* Try to multiply */
 			if (multiply_monster(m_idx, FALSE, is_friendly(m_ptr), is_pet(m_ptr)))
@@ -2251,8 +2241,7 @@ static void process_monster(int m_idx)
 
 
 	/* Hack! "Cyber" monster makes noise... */
-	if (strstr((r_name + r_ptr->name), "Cyber") &&
-	    (randint1(CYBERNOISE) == 1) &&
+	if (strstr((r_name + r_ptr->name), "Cyber") && one_in_(CYBERNOISE) &&
 	    !m_ptr->ml && (m_ptr->cdis <= MAX_SIGHT))
 	{
 		msg_print("You hear heavy steps.");
@@ -2263,8 +2252,7 @@ static void process_monster(int m_idx)
 
 	/* Some monsters can speak */
 	if (speak_unique &&
-	    (r_ptr->flags2 & RF2_CAN_SPEAK) &&
-		(randint1(SPEAK_CHANCE) == 1) &&
+	    (r_ptr->flags2 & RF2_CAN_SPEAK) && one_in_(SPEAK_CHANCE) &&
 		player_has_los_grid(c_ptr))
 	{
 		char m_name[80];
@@ -2324,8 +2312,7 @@ static void process_monster(int m_idx)
 	}
 
 	/* 75% random movement */
-	else if ((r_ptr->flags1 & RF1_RAND_50) &&
-				(r_ptr->flags1 & RF1_RAND_25) &&
+	else if ((r_ptr->flags1 & RF1_RAND_50) && (r_ptr->flags1 & RF1_RAND_25) &&
 	         (randint0(100) < 75))
 	{
 		/* Memorize flags */
@@ -2337,8 +2324,7 @@ static void process_monster(int m_idx)
 	}
 
 	/* 50% random movement */
-	else if ((r_ptr->flags1 & RF1_RAND_50) &&
-				(randint0(100) < 50))
+	else if ((r_ptr->flags1 & RF1_RAND_50) && (randint0(100) < 50))
 	{
 		/* Memorize flags */
 		if (m_ptr->ml) r_ptr->r_flags1 |= (RF1_RAND_50);
@@ -2348,8 +2334,7 @@ static void process_monster(int m_idx)
 	}
 
 	/* 25% random movement */
-	else if ((r_ptr->flags1 & RF1_RAND_25) &&
-				(randint0(100) < 25))
+	else if ((r_ptr->flags1 & RF1_RAND_25) && (randint0(100) < 25))
 	{
 		/* Memorize flags */
 		if (m_ptr->ml) r_ptr->r_flags1 |= RF1_RAND_25;
@@ -2363,11 +2348,6 @@ static void process_monster(int m_idx)
 	{
 		/* Try four "random" directions */
 		mm[0] = mm[1] = mm[2] = mm[3] = 5;
-
-		/* Look for an enemy */
-#if 0  /* Hack - Too slow.  Mimic pits are horrible with this on. */
-		get_enemy_dir(m_ptr, mm);
-#endif /* 0 */
 	}
 
 	/* Pets will follow the player */
@@ -2520,7 +2500,7 @@ static void process_monster(int m_idx)
 			/* Monster destroyed a wall */
 			did_kill_wall = TRUE;
 
-			if (randint1(GRINDNOISE) == 1)
+			if (one_in_(GRINDNOISE))
 			{
 				msg_print("There is a grinding sound.");
 			}
@@ -2570,7 +2550,7 @@ static void process_monster(int m_idx)
 		
 		/* Call the hook */
 		field_hook(&c_ptr->fld_idx, FIELD_ACT_MON_ENTER_TEST,
-			 (void *) &mon_enter_test);
+			 (vptr) &mon_enter_test);
 			 
 		/* Take turn in some cases. */
 		if (!mon_enter_test.do_move && do_move) do_turn = TRUE;
@@ -2704,10 +2684,27 @@ static void process_monster(int m_idx)
 			/* Take a turn */
 			do_turn = TRUE;
 
-			
+			/* Look to see if we've spotted a mimic */
+			if ((m_ptr->smart & SM_MIMIC) && m_ptr->ml)
+			{
+				char m_name2[80];
+		
+				/* Get name */
+				monster_desc (m_name2, m_ptr, 0x88);
+				
+				/* Toggle flag */
+				m_ptr->smart &= ~(SM_MIMIC);
+		
+				/* It is in the monster list now */
+				update_mon_vis(m_ptr->r_idx, 1);
+						
+				/* We've spotted it */
+				msg_format("You see %s!", m_name2);
+			}
+
 			/* Process fields under the monster. */
 			field_hook(&old_ptr->fld_idx,
-				 FIELD_ACT_MONSTER_LEAVE, (void *) m_ptr);
+				 FIELD_ACT_MONSTER_LEAVE, (vptr) m_ptr);
 			
 			/* Hack -- Update the old location */
 			old_ptr->m_idx = c_ptr->m_idx;
@@ -2738,7 +2735,7 @@ static void process_monster(int m_idx)
 			
 			/* Process fields under the monster. */
 			field_hook(&old_ptr->fld_idx,
-				 FIELD_ACT_MONSTER_ENTER, (void *) m_ptr);
+				 FIELD_ACT_MONSTER_ENTER, (vptr) m_ptr);
 
 			/* Redraw the old grid */
 			lite_spot(oy, ox);
@@ -2753,7 +2750,7 @@ static void process_monster(int m_idx)
 			{
 				/* Disturb */
 				if (is_hostile(m_ptr))
-					disturb(0, 0);
+					disturb(FALSE);
 			}
 
 			/* Scan all objects in the grid */
@@ -2784,7 +2781,6 @@ static void process_monster(int m_idx)
 
 					u32b flg3 = 0L;
 
-					char m_name[80];
 					char o_name[80];
 
 					/* Extract some flags */
@@ -2840,34 +2836,23 @@ static void process_monster(int m_idx)
 							msg_format("%^s picks up %s.", m_name, o_name);
 						}
 
-						/* Option */
-						if (testing_carry)
-						{
-							/* Excise the object */
-							excise_object_idx(this_o_idx);
+						/* Excise the object */
+						excise_object_idx(this_o_idx);
 
-							/* Forget mark */
-							o_ptr->marked = FALSE;
+						/* Forget mark */
+						o_ptr->marked = FALSE;
 
-							/* Forget location */
-							o_ptr->iy = o_ptr->ix = 0;
+						/* Forget location */
+						o_ptr->iy = o_ptr->ix = 0;
 
-							/* Memorize monster */
-							o_ptr->held_m_idx = m_idx;
+						/* Memorize monster */
+						o_ptr->held_m_idx = m_idx;
 
-							/* Build a stack */
-							o_ptr->next_o_idx = m_ptr->hold_o_idx;
+						/* Build a stack */
+						o_ptr->next_o_idx = m_ptr->hold_o_idx;
 
-							/* Carry object */
-							m_ptr->hold_o_idx = this_o_idx;
-						}
-
-						/* Nope */
-						else
-						{
-							/* Delete the object */
-							delete_object_idx(this_o_idx);
-						}
+						/* Carry object */
+						m_ptr->hold_o_idx = this_o_idx;
 					}
 
 					/* Destroy the item if not a pet */
@@ -3041,7 +3026,7 @@ void process_monsters(int min_energy)
 	friend_align = 0;
 
 	/* Clear monster fighting indicator */
-	mon_fight = FALSE;
+	p_ptr->mon_fight = FALSE;
 
 	/* Memorize old race */
 	old_monster_race_idx = p_ptr->monster_race_idx;
@@ -3153,19 +3138,17 @@ void process_monsters(int min_energy)
 			test = TRUE;
 		}
 
-#ifdef MONSTER_FLOW
-		/* Hack -- Monsters can "smell" the player from far away */
-		/* Note that most monsters have "aaf" of "20" or so */
-		else if (flow_by_sound &&
-			(area(p_ptr->py, p_ptr->px)->when == c_ptr->when) &&
+		/* 
+		 * Hack -- Monsters can "smell" the player from far away
+		 * Note that most monsters have "aaf" of "20" or so
+		 */
+		else if ((area(p_ptr->py, p_ptr->px)->when == c_ptr->when) &&
 			(c_ptr->cost < MONSTER_FLOW_DEPTH) &&
 			(c_ptr->cost < r_ptr->aaf))
 		{
 			/* We can "smell" the player */
 			test = TRUE;
 		}
-#endif /* MONSTER_FLOW */
-
 
 		/* Do nothing */
 		if (!test) continue;

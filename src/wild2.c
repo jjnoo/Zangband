@@ -108,13 +108,18 @@ static void day_night(void)
 }
 
 
-/* Access the old cave array. */
+/*
+ * Access the old cave array.
+ */
 static cave_type *access_cave(int y, int x)
 {
 	return &cave[y][x];
 }
 
-/* Access wilderness */
+
+/*
+ * Access wilderness
+ */
 static cave_type *access_wild(int y, int x)
 {
 	/*
@@ -122,8 +127,8 @@ static cave_type *access_wild(int y, int x)
 	 * Logical AND with 15 to get location within block.
 	 */
 
-	return &wild_grid.block_ptr[((u16b) y>>4) - wild_grid.y]
-		[((u16b) x>>4) - wild_grid.x][y & 15][x & 15];
+	return &wild_grid.block_ptr[(y>>4) - wild_grid.y]
+		[(x>>4) - wild_grid.x][y & 15][x & 15];
 }
 
 
@@ -233,8 +238,8 @@ static void build_store(int yy, int xx, store_type *st_ptr)
 
 	/* Clear previous contents, add a store door */
 	cave[y][x].feat = FEAT_FLOOR;
-	cave[y][x].fld_idx = FT_STORE_GENERAL + st_ptr->type;
-	
+	cave[y][x].fld_idx = wild_build[st_ptr->type].field;
+
 	/* Save location of store door */
 	st_ptr->x = x;
 	st_ptr->y = y;
@@ -304,7 +309,7 @@ static void town_gen_hack(u16b town_num)
 			feat = cave[yy + y][xx + x].feat;
 
 			if (feat == FEAT_PERM_EXTRA) continue;
-			
+
 			/* Convert square to dungeon floor */
 			cave[yy + y][xx + x].feat = FEAT_FLOOR;
 		}
@@ -312,7 +317,7 @@ static void town_gen_hack(u16b town_num)
 
 	/* Clear previous contents, add down stairs */
 	cave[yy][xx].feat = FEAT_MORE;
-	
+
 	wild_stairs_x = xx;
 	wild_stairs_y = yy;
 }
@@ -375,49 +380,6 @@ void van_town_gen(u16b town_num)
 }
 
 
-/*
- * Look to see if a wilderness block is able to have
- * a town overlayed on top.
- */
-bool town_blank(int x, int y, int xsize, int ysize)
-{
-	int i, j;
-	wild_gen2_type *w_ptr;
-
-	/* Population check */
-	if (randint0(256) > wild[y][x].trans.pop_map) return (FALSE);
-
-	for (i = x - 1; i < x + xsize + 2; i++)
-	{
-		for (j = y - 1; j < y + ysize + 2; j++)
-		{
-			/* Hack - Not next to boundary */
-			if ((i <= 0) || (i >= max_wild - 1) ||
-			    (j <= 0) || (j >= max_wild - 1))
-			{
-				return (FALSE);
-			}
-
-			w_ptr = &wild[j][i].trans;
-
-			/* No town already */
-			if (w_ptr->town) return (FALSE);
-
-			/* No water or lava or acid */
-			if (w_ptr->info & (WILD_INFO_WATER | WILD_INFO_LAVA | WILD_INFO_ACID))
-				 return (FALSE);
-
-			/* No Ocean */
-			if (w_ptr->hgt_map < (256 / SEA_FRACTION)) return (FALSE);
-		}
-	}
-
-	/* Ok then */
-	return (TRUE);
-}
-
-
-
 
 /*
  * Given a location - convert to a location in cave[][]
@@ -426,8 +388,8 @@ static bool get_city_block_locat(int *x, int *y)
 {
 	*x = *x * 8;
 	*y = (*y - town_offset_y * 2) * 8;
-	
-	
+
+
 	if ((*x >=0) && (*y >= 0) && (*x < MAX_WID - 8) && (*y < MAX_HGT - 8))
 	{
 		return (TRUE);
@@ -441,7 +403,11 @@ static bool get_city_block_locat(int *x, int *y)
 static void draw_general(int x0, int y0, store_type *st_ptr, int x, int y)
 {
 	int i, j;
-	
+
+	/* Ignore currently unused parameters */
+	(void) x;
+	(void) y;
+
 	switch (st_ptr->type)
 	{
 		case BUILD_STAIRS:
@@ -458,14 +424,14 @@ static void draw_general(int x0, int y0, store_type *st_ptr, int x, int y)
 
 			/* Clear previous contents, add down stairs */
 			cave[y0][x0].feat = FEAT_MORE;
-			
+
 			break;
 		}
-		
+
 		case BUILD_NONE:
 		{
 			int x1, y1, x2, y2;
-			
+
 			/* Determine the store boundaries */
 			y1 = y0 - randint1(3);
 			y2 = y0 + randint1(2);
@@ -474,16 +440,16 @@ static void draw_general(int x0, int y0, store_type *st_ptr, int x, int y)
 
 			/* Build an invulnerable rectangular building */
 			generate_fill(y1, x1, y2, x2, FEAT_PERM_EXTRA);
-			
+
 			/* No doors */
-		
+
 			break;
 		}
-		
+
 		case BUILD_BLANK:
 		{
 			/* Do Nothing */
-			
+
 			break;
 		}
 	}
@@ -494,8 +460,6 @@ static void draw_store(int x0, int y0, store_type *st_ptr, int x, int y)
 	int x1, y1, x2, y2;
 	int i, j;
 	int tmp;
-	u16b field;
-
 
 	/* Determine the store boundaries */
 	y1 = y0 - randint1(3);
@@ -547,111 +511,9 @@ static void draw_store(int x0, int y0, store_type *st_ptr, int x, int y)
 
 	/* Clear previous contents, add a store door */
 	cave[i][j].feat = FEAT_FLOOR;
-	
-	/* Look up field to use */
-	switch (st_ptr->type)
-	{
-		case BUILD_STORE_GENERAL:
-		{
-			field = FT_STORE_GENERAL;
-			break;
-		}
-		
-		case BUILD_STORE_ARMOURY:
-		{
-			field = FT_STORE_ARMOURY;
-			break;
-		}
-		
-		case BUILD_STORE_WEAPON:
-		{
-			field = FT_STORE_WEAPON;
-			break;
-		}
-		
-		case BUILD_STORE_TEMPLE:
-		{
-			field = FT_STORE_TEMPLE;
-			break;
-		}
-		
-		case BUILD_STORE_ALCHEMIST:
-		{
-			field = FT_STORE_ALCHEMIST;
-			break;
-		}
-		
-		case BUILD_STORE_MAGIC:
-		{
-			field = FT_STORE_MAGIC;
-			break;
-		}
-		
-		case BUILD_STORE_BLACK:
-		{
-			field = FT_STORE_BLACK;
-			break;
-		}
-		
-		case BUILD_STORE_HOME:
-		{
-			field = FT_STORE_HOME;
-			break;
-		}
-		
-		case BUILD_STORE_BOOK:
-		{
-			field = FT_STORE_BOOK;
-			break;
-		}
-		
-		case BUILD_WEAPONMASTER:
-		{
-			field = FT_BUILD_WEAPON;
-			break;
-		}
-		
-		case BUILD_RECHARGE:
-		{
-			field = FT_BUILD_RECHARGE;
-			break;
-		}
-		
-		case BUILD_PLUS_WEAPON:
-		{
-			field = FT_BUILD_PLUS_WEAPON;
-			break;
-		}
-		
-		case BUILD_PLUS_ARMOUR:
-		{
-			field = FT_BUILD_PLUS_ARMOUR;
-			break;
-		}
-		
-		case BUILD_MUTATE:
-		{
-			field = FT_BUILD_MUTATE;
-			break;
-		}
-		
-		case BUILD_MAP:
-		{
-			field = FT_BUILD_MAP;
-			break;
-		}
-		
-		default:
-		{
-			/* Hack - nothing here? */
-			field = FT_WALL_INVIS;
-			break;
-		}
-	}	
 
+	cave[i][j].fld_idx = wild_build[st_ptr->type].field;
 
-	cave[i][j].fld_idx = field;
-	
 	/* Save location of store door */
 	st_ptr->x = x * 8 + j % 8;
 	st_ptr->y = y * 8 + i % 8;
@@ -663,26 +525,29 @@ static void draw_building(byte type, byte x, byte y, u16b store, u16b town_num)
 {
 	/* Really dodgy - just a rectangle, independent of type, for now */
 	int xx, yy;
-	
+
 	/* Hack - save the rng seed */
 	u32b rng_save_seed = Rand_value;
-	
+
 	store_type *st_ptr = &town[town_num].store[store];
+
+	/* Hack, ignore building draw type for now */
+	(void) type;
 
 	/* Save location */
 	xx = x;
 	yy = y;
-	
+
 	/* Hack - set location of stairs so we can start on them. */
 	if (st_ptr->type == BUILD_STAIRS)
 	{
 		wild_stairs_x = x * 8 + 4;
 		wild_stairs_y = y * 8 + 4;
 	}
-	
+
 	/* Get coords */
 	if (!get_city_block_locat(&xx, &yy)) return;
-	
+
 	/* What are we drawing? */
 	if (build_is_store(st_ptr->type))
 	{
@@ -699,22 +564,22 @@ static void draw_building(byte type, byte x, byte y, u16b store, u16b town_num)
 		/* Hack - Draw the "normal" building */
 		draw_store(xx + 4, yy + 4, st_ptr, x, y);
 	}
-	
+
 	/* Hack - restore the rng seed */
 	Rand_value = rng_save_seed;
 }
 
 static void draw_gates(int x, int y, byte i, byte j, town_type *t_ptr)
-{				
-	int k, xx = x, yy = y;	
-	
+{
+	int k, xx = x, yy = y;
+
 	/* Draw gates if visible */
 	for (k = 0; k < MAX_GATES; k++)
 	{
 		if ((t_ptr->gates_x[k] == i) && (t_ptr->gates_y[k] == j))
 		{
 			/* Add doors (hack) */
-			
+
 			switch (k)
 			{
 				case 0:
@@ -722,78 +587,78 @@ static void draw_gates(int x, int y, byte i, byte j, town_type *t_ptr)
 					/* Hack - shift gate if next to walls */
 					if (cave[y + 2][x + 3].feat == FEAT_PERM_SOLID) yy -= 3;
 					if (cave[y + 5][x + 3].feat == FEAT_PERM_SOLID) yy += 3;
-					
+
 					y = yy;
-					
+
 					/* Draw an empty square */
 					generate_fill(y + 3, x + 3, y + 4, x + 4, FEAT_FLOOR);
-					
+
 					/* Right gate */
 					cave[y + 3][x + 4].fld_idx = FT_LOCK_DOOR;
 					cave[y + 3][x + 4].feat = FEAT_CLOSED;
 					cave[y + 4][x + 4].fld_idx = FT_LOCK_DOOR;
 					cave[y + 4][x + 4].feat = FEAT_CLOSED;
-					
+
 					return;
 				}
-			
+
 				case 1:
 				{
 					/* Hack - shift gate if next to walls */
 					if (cave[y + 2][x + 3].feat == FEAT_PERM_SOLID) yy -= 3;
 					if (cave[y + 5][x + 3].feat == FEAT_PERM_SOLID) yy += 3;
-					
+
 					y = yy;
-					
+
 					/* Draw an empty square */
 					generate_fill(y + 3, x + 3, y + 4, x + 4, FEAT_FLOOR);
-					
+
 					/* Left gate */
 					cave[y + 3][x + 3].fld_idx = FT_LOCK_DOOR;
 					cave[y + 3][x + 3].feat = FEAT_CLOSED;
 					cave[y + 4][x + 3].fld_idx = FT_LOCK_DOOR;
 					cave[y + 4][x + 3].feat = FEAT_CLOSED;
-					
+
 					return;
 				}
-				
+
 				case 2:
 				{
 					/* Hack - shift gate if next to walls */
 					if (cave[y + 3][x + 2].feat == FEAT_PERM_SOLID) xx -= 3;
 					if (cave[y + 3][x + 5].feat == FEAT_PERM_SOLID) xx += 3;
-					
+
 					x = xx;
-					
+
 					/* Draw an empty square */
 					generate_fill(y + 3, x + 3, y + 4, x + 4, FEAT_FLOOR);
-					
+
 					/* Bottom gate */
 					cave[y + 4][x + 3].fld_idx = FT_LOCK_DOOR;
 					cave[y + 4][x + 3].feat = FEAT_CLOSED;
 					cave[y + 4][x + 4].fld_idx = FT_LOCK_DOOR;
 					cave[y + 4][x + 4].feat = FEAT_CLOSED;
-					
+
 					return;
 				}
-				
+
 				case 3:
 				{
 					/* Hack - shift gate if next to walls */
 					if (cave[y + 3][x + 2].feat == FEAT_PERM_SOLID) xx -= 3;
 					if (cave[y + 3][x + 5].feat == FEAT_PERM_SOLID) xx += 3;
-					
+
 					x = xx;
-					
+
 					/* Draw an empty square */
 					generate_fill(y + 3, x + 3, y + 4, x + 4, FEAT_FLOOR);
-					
+
 					/* Top gate */
 					cave[y + 3][x + 3].fld_idx = FT_LOCK_DOOR;
 					cave[y + 3][x + 3].feat = FEAT_CLOSED;
 					cave[y + 3][x + 4].fld_idx = FT_LOCK_DOOR;
 					cave[y + 3][x + 4].feat = FEAT_CLOSED;
-					
+
 					return;
 				}
 			}
@@ -833,13 +698,13 @@ void draw_city(u16b town_num)
 
 	/* Get value of "magic" level of buildings */
 	magic = (byte)randint0(256);
-	
+
 	/* Generate plasma factal */
 	clear_temp_block();
 	set_temp_corner_val(WILD_BLOCK_SIZE * 64);
 	set_temp_mid(WILD_BLOCK_SIZE * town[town_num].pop);
 	frac_block();
-		
+
 	/* Find area outside the city */
 	for (i = 0; i < WILD_BLOCK_SIZE; i++)
 	{
@@ -852,7 +717,7 @@ void draw_city(u16b town_num)
 			}
 		}
 	}
-	
+
 	/* Find walls */
 	for (i = 0; i < WILD_BLOCK_SIZE; i++)
 	{
@@ -862,9 +727,9 @@ void draw_city(u16b town_num)
 			if (temp_block[j][i])
 			{
 				/* Scan around */
-				for (k = -1; k <= 1; k++)				
+				for (k = -1; k <= 1; k++)
 				{
-					for (l = -1; l <= 1; l++) 
+					for (l = -1; l <= 1; l++)
 					{
 						/* In bounds? */
 						if ((i + k >= 0) && (i + k < WILD_BLOCK_SIZE) &&
@@ -884,13 +749,13 @@ void draw_city(u16b town_num)
 						}
 					}
 				}
-				
-				/* Count "buildable blocks" */
-				if (temp_block[j][i] != 1) count++;
 			}
 		}
 	}
-	
+
+	/* 'Fill' the town with buildings */
+	count = fill_town_driver();
+
 	/* Rescan walls to avoid "islands" */
 	for (i = 0; i < WILD_BLOCK_SIZE; i++)
 	{
@@ -899,20 +764,19 @@ void draw_city(u16b town_num)
 			/* Is a "wall block" */
 			if (temp_block[j][i] == 1)
 			{
-				
 				city_block = FALSE;
-								
+
 				/* Scan around */
-				for (k = -1; k <= 1; k++)				
+				for (k = -1; k <= 1; k++)
 				{
-					for (l = -1; l <= 1; l++) 
+					for (l = -1; l <= 1; l++)
 					{
 						/* In bounds? */
 						if ((i + k >= 0) && (i + k < WILD_BLOCK_SIZE) &&
 							(j + l >= 0) && (j + l < WILD_BLOCK_SIZE))
 						{
 							/* Is it a city block? */
-							if (temp_block[j + l][i + k] > 1)
+							if (temp_block[j + l][i + k] == 2)
 							{
 								/* We are next to a city */
 								city_block = TRUE;
@@ -920,13 +784,13 @@ void draw_city(u16b town_num)
 						}
 					}
 				}
-				
+
 				/* No islands */
 				if (!city_block) temp_block[j][i] = 0;
 			}
 		}
 	}
-	
+
 	/* Draw walls to cave[][] if visible */
 	for (i = 0; i < WILD_BLOCK_SIZE; i++)
 	{
@@ -937,78 +801,66 @@ void draw_city(u16b town_num)
 			{
 				y = j;
 				x = i;
-				
+
 				/* Get coords of block */
 				if (get_city_block_locat(&x, &y))
 				{
 					/* It is on the "screen" */
-					
+
 					/* Wall goes up */
 					if ((j > 0) && (temp_block[j - 1][i] == 1))
 					{
 						generate_fill(y, x + 3, y + 4, x + 4,
 							 FEAT_PERM_SOLID);
 					}
-					
+
 					/* Wall goes left */
 					if ((i > 0) && (temp_block[j][i - 1] == 1))
 					{
 						generate_fill(y + 3, x, y + 4, x + 4,
 							 FEAT_PERM_SOLID);
 					}
-					
+
 					/* Wall goes right */
 					if ((i < WILD_BLOCK_SIZE-1) && (temp_block[j][i + 1] == 1))
 					{
 						generate_fill(y + 3, x + 3, y + 4, x + 7,
 							FEAT_PERM_SOLID);
 					}
-					
+
 					/* Wall goes down */
 					if ((j < WILD_BLOCK_SIZE-1) && (temp_block[j + 1][i] == 1))
 					{
 						generate_fill(y + 3, x + 3, y + 7, x + 4,
 							FEAT_PERM_SOLID);
 					}
-					
+
 					/* Draw the gates */
 					draw_gates(x, y, i, j, t_ptr);
 				}
 			}
 		}
-	}	
-	
+	}
+
 	/* Scan blocks in a random order */
-	for (build = 0; build < count; build++)
+	for (build = 0; count; build++)
 	{
-		/* Pick a square */		
-		i = (byte)randint0(WILD_BLOCK_SIZE);
-		j = (byte)randint0(WILD_BLOCK_SIZE);
-		
-		/* Find some room for a building */
-		while (temp_block[j][i] <= 1)
-		{
-			/* Scan across town_block */
-			i++;
-			
-			if (i == WILD_BLOCK_SIZE)
-			{
-				/* New line */
-				i = 0;
-				j++;
-				
-				if (j == WILD_BLOCK_SIZE)
-				{
-					/* Restart from the begining */
-					j = 0;
-				}
-			}
-		}
-		
+		/* Pick a square */
+		i = randint0(count);
+
 		/* Draw the building */
-		draw_building(0, i, j, build, town_num);
-		
-		temp_block[j][i] = 0;
+		draw_building(0, build_x[i], build_y[i], build, town_num);
+
+		/*
+		 * Decrement free space in city
+		 * Note deliberate use of count-- in initialiser
+		 */
+		for (count--; i < count; i++)
+		{
+			/* Shift unallocated buildings down */
+			build_x[i] = build_x[i + 1];
+			build_y[i] = build_y[i + 1];
+		}
 	}
 
 	/* Hack -- use the "complex" RNG */
@@ -1040,39 +892,39 @@ static void town_gen(u16b town_num)
 static void overlay_town(int y, int x, u16b w_town, blk_ptr block_ptr)
 {
 	int		i, j, xx, yy;
-	
+
 	bool redraw = FALSE;
-	
+
 	cave_type	*c_ptr;
-	
+
 	/* Do we have the right town? */
 	if (cur_town != w_town)
 	{
 		/* Reset */
 		cur_town = w_town;
 		town_offset_y = 0;
-		
+
 		redraw = TRUE;
 	}
 
 	/* Find block to copy */
 	xx = (x - town[cur_town].x) * 16;
 	yy = (y - town[cur_town].y - town_offset_y) * 16;
-	
+
 	if (yy < 0)
 	{
 		yy += 4 * 16;
 		town_offset_y -= 4;
 		redraw = TRUE;
 	}
-	
+
 	if (yy >= 4 * 16)
 	{
 		yy -= 4 * 16;
 		town_offset_y += 4;
 		redraw = TRUE;
 	}
-	
+
 	/* Redraw the town? */
 	if (redraw)
 	{
@@ -1092,8 +944,8 @@ static void overlay_town(int y, int x, u16b w_town, blk_ptr block_ptr)
 				/* Only copy if there is something there. */
 				block_ptr[j][i].feat = c_ptr->feat;
 			}
-			
-			/* 
+
+			/*
 			 * Instantiate field
 			 *
 			 * Note that most types of field are not in this list.
@@ -1101,54 +953,28 @@ static void overlay_town(int y, int x, u16b w_town, blk_ptr block_ptr)
 			 * Doors, buildings, traps, quests etc.
 			 * are all that are in this list.
 			 */
-			switch (c_ptr->fld_idx)
+			if (!(c_ptr->fld_idx)) continue;
+
+			switch (t_info[c_ptr->fld_idx].type)
 			{
 				/* Nothing */
-				case 0: break;
-				
-				case FT_TRAP_DOOR:
-				case FT_TRAP_PIT:
-				case FT_TRAP_SPIKE_PIT:
-				case FT_TRAP_POISON_PIT:
-				case FT_TRAP_CURSE:
-				case FT_TRAP_TELEPORT:
-				case FT_TRAP_ELEMENT:
-				case FT_TRAP_BA_ELEMENT:
-				case FT_TRAP_GAS:
-				case FT_TRAP_TRAPS:
-				case FT_TRAP_TEMP_STAT:
-				case FT_TRAP_PERM_STAT:
-				case FT_TRAP_LOSE_XP:
-				case FT_TRAP_DISENCHANT:
-				case FT_TRAP_DROP_ITEM:
-				case FT_TRAP_MUTATE:
-				case FT_TRAP_NEW_LIFE:
-				case FT_TRAP_NO_LITE:
-				case FT_TRAP_HUNGER:
-				case FT_TRAP_NO_GOLD:
-				case FT_TRAP_HASTE_MON:
-				case FT_TRAP_RAISE_MON:
-				case FT_TRAP_DRAIN_MAGIC:
-				case FT_TRAP_AGGRAVATE:
-				case FT_TRAP_SUMMON:
-				case FT_TRAP_LOSE_MEMORY:
+				case FTYPE_TRAP:
 				{
 					/* Activate the trap */
 					if (place_field(y * 16 + j, x * 16 + i, c_ptr->fld_idx))
-					{						
+					{
 						/* Hack - Initialise it (without "extra" information) */
 						(void)field_hook_single(&block_ptr[j][i].fld_idx,
 							 FIELD_ACT_INIT, NULL);
 					}
-					
+
 					break;
 				}
-				
-				case FT_LOCK_DOOR:
-				case FT_JAM_DOOR:
+
+				case FTYPE_DOOR:
 				{
 					int data = 9;
-					
+
 					/* Add a door field */
 					if (place_field(y * 16 + j, x * 16 + i, c_ptr->fld_idx))
 					{
@@ -1156,25 +982,11 @@ static void overlay_town(int y, int x, u16b w_town, blk_ptr block_ptr)
 						(void)field_hook_single(&block_ptr[j][i].fld_idx,
 							 FIELD_ACT_INIT, &data);
 					}
-					
+
 					break;
 				}
-				
-				case FT_STORE_GENERAL:
-				case FT_STORE_ARMOURY:
-				case FT_STORE_WEAPON:
-				case FT_STORE_TEMPLE:
-				case FT_STORE_ALCHEMIST:
-				case FT_STORE_MAGIC:
-				case FT_STORE_BLACK:
-				case FT_STORE_HOME:
-				case FT_STORE_BOOK:
-				case FT_BUILD_WEAPON:
-				case FT_BUILD_RECHARGE:
-				case FT_BUILD_PLUS_WEAPON:
-				case FT_BUILD_PLUS_ARMOUR:
-				case FT_BUILD_MUTATE:
-				case FT_BUILD_MAP:
+
+				case FTYPE_BUILD:
 				{
 					/* Stores + buildings */
 					(void) place_field(y * 16 + j, x * 16 + i, c_ptr->fld_idx);
@@ -1198,8 +1010,8 @@ static void overlay_town(int y, int x, u16b w_town, blk_ptr block_ptr)
 
 void change_level(int level)
 {
-	int x, y;	
-	
+	int x, y;
+
 	/* Hack - reset trap detection flag */
 	p_ptr->detected = FALSE;
 
@@ -1224,11 +1036,11 @@ void change_level(int level)
 			/* Lighten / darken wilderness */
 			day_night();
 		}
-		
+
 		/* Only do this if everything is initialised */
 		if (!character_dungeon) return;
-		
-		/* 
+
+		/*
 		 * Restore the outside town if it exists
 		 * This is mainly done to reinit the fields
 		 */
@@ -1239,10 +1051,10 @@ void change_level(int level)
 				/* The block to use */
 				blk_ptr block_ptr =
 					 wild_grid.block_ptr[y - wild_grid.y][x - wild_grid.x];
-				
+
 				/* Overlay town */
 				u16b w_town = wild[y][x].done.town;
-				
+
 				/* Is there a town? */
 				if (w_town)
 				{
@@ -1528,7 +1340,7 @@ void frac_block(void)
 		for (j = hstep; j <= size - hstep; j += lstep)
 		{
 			for (i = 0; i <= size; i += lstep)
-		   	{
+			{
 				/* only write to points that are "blank" */
 				if (temp_block[j][i] == MAX_SHORT)
 				{
@@ -1610,7 +1422,7 @@ static void smooth_block(void)
 		for (j = hstep; j <= size - hstep; j += lstep)
 		{
 			for (i = 0; i <= size; i += lstep)
-		   	{
+			{
 				/* only write to points that are "blank" */
 				if (temp_block[j][i] == MAX_SHORT)
 				{
@@ -1670,7 +1482,7 @@ static byte pick_feat(byte feat1, byte feat2, byte feat3, byte feat4,
 		}
 		else
 		{
-			c1 = 0x1000000 / abs((long)prob1 - prob);
+			c1 = 0x1000000 / ABS((long)prob1 - prob);
 		}
 	}
 	if (feat2)
@@ -1681,7 +1493,7 @@ static byte pick_feat(byte feat1, byte feat2, byte feat3, byte feat4,
 		}
 		else
 		{
-			c2 = 0x1000000 / abs((long) prob2 - prob);
+			c2 = 0x1000000 / ABS((long) prob2 - prob);
 		}
 	}
 	if (feat3)
@@ -1692,7 +1504,7 @@ static byte pick_feat(byte feat1, byte feat2, byte feat3, byte feat4,
 		}
 		else
 		{
-			c3 = 0x1000000 / abs((long) prob3 - prob);
+			c3 = 0x1000000 / ABS((long) prob3 - prob);
 		}
 	}
 
@@ -1704,7 +1516,7 @@ static byte pick_feat(byte feat1, byte feat2, byte feat3, byte feat4,
 		}
 		else
 		{
-			c4 = 0x1000000 / abs((long) prob4 - prob);
+			c4 = 0x1000000 / ABS((long) prob4 - prob);
 		}
 	}
 
@@ -1910,13 +1722,13 @@ static void make_wild_road(blk_ptr block_ptr, int x, int y)
 				}
 				else
 				{
-					if (randint0(3))
+					if (one_in_(3))
 					{
-						c_ptr->feat = FEAT_DIRT;
+						c_ptr->feat = FEAT_PEBBLES;
 					}
 					else
 					{
-						c_ptr->feat = FEAT_PEBBLES;
+						c_ptr->feat = FEAT_DIRT;
 					}
 				}
 			}
@@ -1941,25 +1753,25 @@ static void wild_add_gradient(blk_ptr block_ptr, byte feat1, byte feat2)
 			if (temp_block[j][i] >= WILD_BLOCK_SIZE * 213)
 			{
 				/* 25% of the time use the other tile : it looks better this way */
-				if (randint1(100) < 75)
+				if (one_in_(4))
 				{
-					block_ptr[j][i].feat = feat2;
+					block_ptr[j][i].feat = feat1;
 				}
 				else
 				{
-					block_ptr[j][i].feat = feat1;
+					block_ptr[j][i].feat = feat2;
 				}
 			}
 			else if (temp_block[j][i] >= WILD_BLOCK_SIZE * 128)
 			{
 				/* 25% of the time use the other tile : it looks better this way */
-				if (randint1(100) < 75)
+				if (one_in_(4))
 				{
-					block_ptr[j][i].feat = feat1;
+					block_ptr[j][i].feat = feat2;
 				}
 				else
 				{
-					block_ptr[j][i].feat = feat2;
+					block_ptr[j][i].feat = feat1;
 				}
 			}
 		}
@@ -2111,14 +1923,14 @@ static void make_wild_03(blk_ptr block_ptr, byte *data)
 			/* Outside circle? */
 			if (element < WILD_BLOCK_SIZE * 128) continue;
 
-			if ((element < WILD_BLOCK_SIZE * 171) && (randint0(2) == 1))
+			if ((element < WILD_BLOCK_SIZE * 171) && one_in_(2))
 			{
 				/* Outermost terrain */
 				block_ptr[j][i].feat = data[1];
 				continue;
 			}
 
-			if ((element < WILD_BLOCK_SIZE * 213) && (randint0(2) == 1))
+			if ((element < WILD_BLOCK_SIZE * 213) && one_in_(2))
 			{
 				/* Middle terrain */
 				block_ptr[j][i].feat = data[2];
@@ -2129,6 +1941,16 @@ static void make_wild_03(blk_ptr block_ptr, byte *data)
 			block_ptr[j][i].feat = data[3];
 		}
 	}
+}
+
+/*
+ * This function blends adjacent sea blocks
+ * (by picking the feat type to use)
+ */
+static void blend_sea(cave_type *c_ptr, byte sea_type)
+{
+	c_ptr->feat = pick_feat(FEAT_SHAL_WATER, FEAT_DEEP_WATER,
+					FEAT_OCEAN_WATER, FEAT_NONE, 0, 10, 20, 40, sea_type);
 }
 
 
@@ -2153,7 +1975,7 @@ static void blend_wild_02(cave_type *c_ptr, byte *data)
 }
 
 
-void blend_helper(cave_type *c_ptr, byte *data,int g_type)
+void blend_helper(cave_type *c_ptr, byte *data, int g_type)
 {
 	/* Based on type - choose wilderness block generation function */
 	switch (g_type)
@@ -2190,25 +2012,13 @@ static void blend_block(int x, int y, blk_ptr block_ptr, u16b type)
 
 	u16b w_type;
 
-	/* Initialise temporary block */
-	clear_temp_block();
-
-	/* Boundary is at half probability */
-	set_temp_corner_val(WILD_BLOCK_SIZE * 128);
-
-	/* This is the "full" value so that the center of the block stays as normal */
-	set_temp_mid(WILD_BLOCK_SIZE * 256);
-
-	/* Generate plasma factal */
-	frac_block();
-
 	/* Blend based on height map */
 	for (j = 0; j < WILD_BLOCK_SIZE; j++)
 	{
 		for (i = 0; i < WILD_BLOCK_SIZE; i++)
 		{
-			/* Chance to blend is based on element in fractal */
-			if (randint0(WILD_BLOCK_SIZE * 256) > temp_block[j][i]) continue;
+			/* Chance to blend is 1 in 2 */
+			if (quick_rand()) continue;
 
 			/* Work out adjacent block */
 			if (i < WILD_BLOCK_SIZE / 4)
@@ -2246,11 +2056,23 @@ static void blend_block(int x, int y, blk_ptr block_ptr, u16b type)
 
 			w_type = wild[y + dy][x + dx].done.wild;
 
-			/* The sea doesn't blend. (Use rivers) */
-			if (w_type >= WILD_SEA) continue;
-
 			/* If adjacent type is the same as this one - don't blend */
 			if (w_type == type) continue;
+
+			/* The sea doesn't blend. (Use rivers) */
+			if (w_type >= WILD_SEA)
+			{
+				if (type >= WILD_SEA)
+				{
+					blend_sea(&block_ptr[j][i], (byte)(w_type - WILD_SEA));
+				}
+				else
+				{
+					/* Do not try to blend sea with land */
+					/* We need to fix the blocky look of oceans though */
+					continue;
+				}
+			}
 
 			/* Blend with generation type specified by gen_routine */
 			blend_helper(&block_ptr[j][i], wild_gen_data[w_type].data,
@@ -2290,7 +2112,7 @@ void gen_block_helper(blk_ptr block_ptr, byte *data, int gen_type)
 
 
 /*
- * Fill the block with perm. wall  This is only used by the vanilla town option.
+ * Fill the block with perm. walls. This is only used by the vanilla town option.
  */
 static void fill_perm_wall(blk_ptr block_ptr)
 {
@@ -2341,7 +2163,7 @@ static void add_monsters_block(int x, int y)
 			/* See if monster should go on square */
 			if (!randint0(prob))
 			{
-				if (randint0(2))
+				if (one_in_(2))
 				{
 					/* Monsters are awake */
 					(void)place_monster(yy + j, xx + i, FALSE, TRUE);
@@ -2452,7 +2274,7 @@ static void gen_block(int x, int y, blk_ptr block_ptr)
 		/* Blend with adjacent terrains */
 		blend_block(x, y, block_ptr, w_type);
 
-		/* Add water boundary effects.  (Rivers / Ocean) */
+		/* Add water boundary effects. (Rivers / Ocean) */
 		if (wild_info_bounds(x, y, WILD_INFO_WATER))
 		{
 			/* Hack, above function sets bounds */
@@ -2533,7 +2355,7 @@ void init_wild_cache(void)
 		for (y = 0; y < WILD_GRID_SIZE; y++)
 		{
 			/* Link to the grid */
-			wild_grid.block_ptr[y][x] = wild_cache[x  + WILD_GRID_SIZE * y];
+			wild_grid.block_ptr[y][x] = wild_cache[x + WILD_GRID_SIZE * y];
 		}
 	}
 }
@@ -2553,7 +2375,7 @@ static void allocate_all(void)
 		for (x = 0; x < WILD_GRID_SIZE; x++)
 		{
 			/* The block to use */
-			block_ptr = wild_cache[x  + WILD_GRID_SIZE * y];
+			block_ptr = wild_cache[x + WILD_GRID_SIZE * y];
 
 			/* Delete the block */
 			del_block(block_ptr);
@@ -2573,7 +2395,7 @@ static void allocate_all(void)
 
 /*
  * The following four functions shift the visible
- * section of the wilderness by 16 units.  This is
+ * section of the wilderness by 16 units. This is
  * done by scrolling the grid of pointers.
  */
 static void shift_down(void)
@@ -2756,7 +2578,7 @@ void move_wild(void)
 	min_hgt = wild_grid.y_min;
 
 	/* Shift in only a small discrepency */
-	if (abs(dy) == 1)
+	if (ABS(dy) == 1)
 	{
 		if (dy == 1) shift_down();
 		else shift_up();
@@ -2790,7 +2612,7 @@ void move_wild(void)
 	min_wid = wild_grid.x_min;
 
 	/* Shift in only a small discrepency */
-	if (abs(dx) == 1)
+	if (ABS(dx) == 1)
 	{
 		if (dx == 1) shift_right();
 		else shift_left();
@@ -2805,5 +2627,3 @@ void move_wild(void)
 		allocate_all();
 	}
 }
-
-

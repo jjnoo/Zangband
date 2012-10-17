@@ -12,6 +12,19 @@
 
 #include "angband.h"
 
+/*
+ * Array of monsters who have died from the result of a spell effect.
+ *
+ * This is used to prevent the stack-smash when too many monsters
+ * die in an explosion chain-reaction.  (This is used as a circular
+ * queue.)
+ */
+s16b mon_d_head = 0;
+s16b mon_d_tail = 0;
+s16b mon_d_m_idx[DEATH_MAX];
+
+
+
 /* ToDo: Make this global */
 /* 1/x chance of reducing stats (for elemental attacks) */
 #define HURT_CHANCE 16
@@ -134,14 +147,11 @@ static byte spell_color(int type)
  *
  * If the distance is not "one", we (may) return "*".
  */
-u16b bolt_pict(int y, int x, int ny, int nx, int typ)
+static void bolt_pict(int y, int x, int ny, int nx, int typ, byte *a, byte *c)
 {
 	int base;
 
 	byte k;
-
-	byte a;
-	char c;
 
 	/* No motion (*) */
 	if ((ny == y) && (nx == x)) base = 0x30;
@@ -165,315 +175,9 @@ u16b bolt_pict(int y, int x, int ny, int nx, int typ)
 	k = spell_color(typ);
 
 	/* Obtain attr/char */
-	a = misc_to_attr[base + k];
-	c = misc_to_char[base + k];
-
-	/* Create pict */
-	return (PICT(a, c));
+	*a = misc_to_attr[base + k];
+	*c = misc_to_char[base + k];
 }
-
-
-/*
- * Determine the path taken by a projection.
- *
- * The projection will always start from the grid (y1,x1), and will travel
- * towards the grid (y2,x2), touching one grid per unit of distance along
- * the major axis, and stopping when it enters the destination grid or a
- * wall grid, or has travelled the maximum legal distance of "range".
- *
- * Note that "distance" in this function (as in the "update_view()" code)
- * is defined as "MAX(dy,dx) + MIN(dy,dx)/2", which means that the player
- * actually has an "octagon of projection" not a "circle of projection".
- *
- * The path grids are saved into the grid array pointed to by "gp", and
- * there should be room for at least "range" grids in "gp".  Note that
- * due to the way in which distance is calculated, this function normally
- * uses fewer than "range" grids for the projection path, so the result
- * of this function should never be compared directly to "range".  Note
- * that the initial grid (y1,x1) is never saved into the grid array, not
- * even if the initial grid is also the final grid.  XXX XXX XXX
- *
- * The "flg" flags can be used to modify the behavior of this function.
- *
- * In particular, the "PROJECT_STOP" and "PROJECT_THRU" flags have the same
- * semantics as they do for the "project" function, namely, that the path
- * will stop as soon as it hits a monster, or that the path will continue
- * through the destination grid, respectively.
- *
- * The "PROJECT_JUMP" flag, which for the "project()" function means to
- * start at a special grid (which makes no sense in this function), means
- * that the path should be "angled" slightly if needed to avoid any wall
- * grids, allowing the player to "target" any grid which is in "view".
- * This flag is non-trivial and has not yet been implemented, but could
- * perhaps make use of the "vinfo" array (above).  XXX XXX XXX
- *
- * This function returns the number of grids (if any) in the path.  This
- * function will return zero if and only if (y1,x1) and (y2,x2) are equal.
- *
- * This algorithm is similar to, but slightly different from, the one used
- * by "update_view_los()", and very different from the one used by "los()".
- */
-sint project_path(coord *gp, int range, int y1, int x1, int y2, int x2, u16b flg)
-{
-	int y, x;
-
-	int n = 0;
-	int k = 0;
-
-	/* Absolute */
-	int ay, ax;
-
-	/* Offsets */
-	int sy, sx;
-
-	/* Fractions */
-	int frac;
-
-	/* Scale factors */
-	int full, half;
-
-	/* Slope */
-	int m;
-
-	cave_type *c_ptr;
-	
-	/* No path necessary (or allowed) */
-	if ((x1 == x2) && (y1 == y2)) return (0);
-
-
-	/* Analyze "dy" */
-	if (y2 < y1)
-	{
-		ay = (y1 - y2);
-		sy = -1;
-	}
-	else
-	{
-		ay = (y2 - y1);
-		sy = 1;
-	}
-
-	/* Analyze "dx" */
-	if (x2 < x1)
-	{
-		ax = (x1 - x2);
-		sx = -1;
-	}
-	else
-	{
-		ax = (x2 - x1);
-		sx = 1;
-	}
-
-
-	/* Number of "units" in one "half" grid */
-	half = (ay * ax);
-
-	/* Number of "units" in one "full" grid */
-	full = half << 1;
-
-
-	/* Vertical */
-	if (ay > ax)
-	{
-		/* Start at tile edge */
-		frac = ax * ax;
-
-		/* Let m = ((dx/dy) * full) = (dx * dx * 2) = (frac * 2) */
-		m = frac << 1;
-
-		/* Start */
-		y = y1 + sy;
-		x = x1;
-
-		/* Create the projection path */
-		while (1)
-		{
-			/* Save grid */
-			gp[n].x = x;
-			gp[n].y = y;
-			n++;
-
-			/* Hack -- Check maximum range */
-			if ((n + (k >> 1)) >= range) break;
-
-			/* Sometimes stop at destination grid */
-			if (!(flg & (PROJECT_THRU)))
-			{
-				if ((x == x2) && (y == y2)) break;
-			}
-
-			/* Stop if out of bounds */
-			if (!in_bounds(y, x)) break;
-
-			c_ptr = area(y, x);
-
-			/* Always stop at non-initial wall grids */
-			if ((n > 0) && !cave_floor_grid(c_ptr)) break;
-			
-			/* Require fields do not block magic */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC)) break;
-
-			/* Sometimes stop at non-initial monsters/players */
-			if ((c_ptr->m_idx != 0) && (n > 0))
-			{
-				if (flg & (PROJECT_STOP)) break;
-				if ((flg & (PROJECT_FRND)) && is_pet(&m_list[c_ptr->m_idx])) break;
-			}
-
-			/* Slant */
-			if (m)
-			{
-				/* Advance (X) part 1 */
-				frac += m;
-
-				/* Horizontal change */
-				if (frac >= half)
-				{
-					/* Advance (X) part 2 */
-					x += sx;
-
-					/* Advance (X) part 3 */
-					frac -= full;
-
-					/* Track distance */
-					k++;
-				}
-			}
-
-			/* Advance (Y) */
-			y += sy;
-		}
-	}
-
-	/* Horizontal */
-	else if (ax > ay)
-	{
-		/* Start at tile edge */
-		frac = ay * ay;
-
-		/* Let m = ((dy/dx) * full) = (dy * dy * 2) = (frac * 2) */
-		m = frac << 1;
-
-		/* Start */
-		y = y1;
-		x = x1 + sx;
-
-		/* Create the projection path */
-		while (1)
-		{
-			/* Save grid */
-			gp[n].x = x;
-			gp[n].y = y;
-			n++;
-
-			/* Hack -- Check maximum range */
-			if ((n + (k >> 1)) >= range) break;
-
-			/* Sometimes stop at destination grid */
-			if (!(flg & (PROJECT_THRU)))
-			{
-				if ((x == x2) && (y == y2)) break;
-			}
-
-			/* Stop if out of bounds */
-			if (!in_bounds(y, x)) break;
-
-			c_ptr = area(y, x);
-
-			/* Always stop at non-initial wall grids */
-			if ((n > 0) && !cave_floor_grid(c_ptr)) break;
-
-			/* Require fields do not block magic */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC)) break;
-
-			/* Sometimes stop at non-initial monsters/players */
-			if ((c_ptr->m_idx != 0) && (n > 0))
-			{
-				if (flg & (PROJECT_STOP)) break;
-				if ((flg & (PROJECT_FRND)) && is_pet(&m_list[c_ptr->m_idx])) break;
-			}
-
-			/* Slant */
-			if (m)
-			{
-				/* Advance (Y) part 1 */
-				frac += m;
-
-				/* Vertical change */
-				if (frac >= half)
-				{
-					/* Advance (Y) part 2 */
-					y += sy;
-
-					/* Advance (Y) part 3 */
-					frac -= full;
-
-					/* Track distance */
-					k++;
-				}
-			}
-
-			/* Advance (X) */
-			x += sx;
-		}
-	}
-
-	/* Diagonal */
-	else
-	{
-		/* Start */
-		y = y1 + sy;
-		x = x1 + sx;
-
-		/* Create the projection path */
-		while (1)
-		{
-			/* Save grid */
-			gp[n].x = x;
-			gp[n].y = y;
-			n++;
-
-			/* Hack -- Check maximum range */
-			if ((n + (n >> 1)) >= range) break;
-
-			/* Sometimes stop at destination grid */
-			if (!(flg & (PROJECT_THRU)))
-			{
-				if ((x == x2) && (y == y2)) break;
-			}
-
-			/* Stop if out of bounds */
-			if (!in_bounds(y, x)) break;
-
-			c_ptr = area(y, x);
-
-			/* Always stop at non-initial wall grids */
-			if ((n > 0) && !cave_floor_grid(c_ptr)) break;
-			
-			/* Require fields do not block magic */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC)) break;
-
-			/* Sometimes stop at non-initial monsters/players */
-			if ((c_ptr->m_idx != 0) && (n > 0))
-			{
-				if (flg & (PROJECT_STOP)) break;
-				if ((flg & (PROJECT_FRND)) && is_pet(&m_list[c_ptr->m_idx])) break;
-			}
-
-			/* Advance (Y) */
-			y += sy;
-
-			/* Advance (X) */
-			x += sx;
-		}
-	}
-
-
-	/* Length */
-	return (n);
-}
-
 
 
 /*
@@ -797,7 +501,7 @@ static bool project_f(int who, int r, int y, int x, int dam, int typ)
 			if ((c_ptr->o_idx != 0) || (c_ptr->m_idx != 0)) break;
 
 			/* Add the glyph here as a field */
-			(void) place_field(y, x, FT_GLYPH_WARDING);
+			(void)place_field(y, x, FT_GLYPH_WARDING);
 
 			break;
 		}
@@ -1285,8 +989,10 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 	/* Never affect projector */
 	if (who && (c_ptr->m_idx == who)) return (FALSE);
 
-	/* Don't affect already death monsters */
-	/* Prevents problems with chain reactions of exploding monsters */
+	/*
+	 * Don't affect already dead monsters
+	 * This prevents problems with chain reactions of exploding monsters
+	 */
 	if (m_ptr->hp < 0) return (FALSE);
 
 	/* Reduce damage by distance */
@@ -1387,10 +1093,10 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags3 & RF3_IM_POIS)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				if (seen) r_ptr->r_flags3 |= (RF3_IM_POIS);
 			}
-			else if (randint1(3) == 1) do_poly = TRUE;
+			else if (one_in_(3)) do_poly = TRUE;
 			break;
 		}
 
@@ -1426,7 +1132,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			else
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 			}
 			break;
 		}
@@ -1445,7 +1151,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags3 & RF3_RES_PLAS)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				if (seen)
 					r_ptr->r_flags3 |= (RF3_RES_PLAS);
 			}
@@ -1465,7 +1171,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			else if (r_ptr->flags3 & RF3_RES_NETH)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 
 				if (seen) r_ptr->r_flags3 |= (RF3_RES_NETH);
 			}
@@ -1492,7 +1198,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			else if (r_ptr->flags3 & RF3_RES_WATE)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				if (seen) r_ptr->r_flags3 |= (RF3_RES_WATE);
 			}
 			break;
@@ -1503,12 +1209,12 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		{
 			if (seen) obvious = TRUE;
 			do_poly = TRUE;
-			do_conf = (5 + randint1(11) + r) / (r + 1);
+			do_conf = (rand_range(5, 16) + r) / (r + 1);
 			if ((r_ptr->flags4 & RF4_BR_CHAO) ||
-			   ((r_ptr->flags3 & RF3_DEMON) && (randint1(3) == 1)))
+			   ((r_ptr->flags3 & RF3_DEMON) && one_in_(3)))
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				do_poly = FALSE;
 			}
 			break;
@@ -1521,7 +1227,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & RF4_BR_SHAR)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 			}
 			break;
 		}
@@ -1544,11 +1250,11 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		case GF_SOUND:
 		{
 			if (seen) obvious = TRUE;
-			do_stun = (10 + randint1(15) + r) / (r + 1);
+			do_stun = (rand_range(10, 25) + r) / (r + 1);
 			if (r_ptr->flags4 & RF4_BR_SOUN)
 			{
 				note = " resists.";
-				dam *= 2; dam /= randint1(6) + 6;
+				dam *= 2; dam /= rand_range(7, 12);
 			}
 			break;
 		}
@@ -1557,11 +1263,11 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		case GF_CONFUSION:
 		{
 			if (seen) obvious = TRUE;
-			do_conf = (10 + randint1(15) + r) / (r + 1);
+			do_conf = (rand_range(10, 25) + r) / (r + 1);
 			if (r_ptr->flags4 & RF4_BR_CONF)
 			{
 				note = " resists.";
-				dam *= 2; dam /= randint1(6) + 6;
+				dam *= 2; dam /= rand_range(7, 12);
 			}
 			else if (r_ptr->flags3 & RF3_NO_CONF)
 			{
@@ -1578,7 +1284,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags3 & RF3_RES_DISE)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				if (seen) r_ptr->r_flags3 |= (RF3_RES_DISE);
 			}
 			break;
@@ -1591,7 +1297,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags3 & RF3_RES_NEXU)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				if (seen) r_ptr->r_flags3 |= (RF3_RES_NEXU);
 			}
 			break;
@@ -1605,7 +1311,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & RF4_BR_WALL)
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 			}
 			break;
 		}
@@ -1617,7 +1323,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & (RF4_BR_INER))
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 			}
 			else
 			{
@@ -1644,7 +1350,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & (RF4_BR_TIME))
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 			}
 			break;
 		}
@@ -1678,7 +1384,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & (RF4_BR_GRAV))
 			{
 				note = " resists.";
-				dam *= 3; dam /= randint1(6) + 6;
+				dam *= 3; dam /= rand_range(7, 12);
 				do_dist = 0;
 			}
 			else
@@ -1750,7 +1456,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (seen) obvious = TRUE;
 
 			/* PSI only works if the monster can see you! -- RG */
-			if (!(los(m_ptr->fy, m_ptr->fx, p_ptr->py, p_ptr->px)))
+			if (!(c_ptr->info & CAVE_VIEW))
 			{
 				dam = 0;
 				note = " can't see you, and isn't affected!";
@@ -1778,8 +1484,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				 */
 				if (((r_ptr->flags3 & RF3_UNDEAD) ||
 					  (r_ptr->flags3 & RF3_DEMON)) &&
-					  (r_ptr->level > p_ptr->lev) &&
-					  (randint1(2) == 1))
+					  (r_ptr->level > p_ptr->lev) && one_in_(2))
 				{
 					note = NULL;
 					msg_format("%^s%s corrupted mind backlashes your attack!",
@@ -1794,7 +1499,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 						/* Injure +/- confusion */
 						monster_desc(killer, m_ptr, 0x88);
 						take_hit(dam, killer);  /* has already been /3 */
-						if (randint1(4) == 1)
+						if (one_in_(4))
 						{
 							switch (randint1(4))
 							{
@@ -1823,7 +1528,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				}
 			}
 
-			if ((dam > 0) && (randint1(4) == 1))
+			if ((dam > 0) && one_in_(4))
 			{
 				switch (randint1(4))
 				{
@@ -1872,8 +1577,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				 */
 				if (((r_ptr->flags3 & RF3_UNDEAD) ||
 				     (r_ptr->flags3 & RF3_DEMON)) &&
-				     (r_ptr->level > p_ptr->lev) &&
-				     (randint1(2) == 1))
+				     (r_ptr->level > p_ptr->lev) && one_in_(2))
 				{
 					note = NULL;
 					msg_format("%^s%s corrupted mind backlashes your attack!",
@@ -1963,8 +1667,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				 */
 				if (((r_ptr->flags3 & RF3_UNDEAD) ||
 				     (r_ptr->flags3 & RF3_DEMON)) &&
-				     (r_ptr->level > p_ptr->lev) &&
-				     (randint1(2) == 1))
+				     (r_ptr->level > p_ptr->lev) && one_in_(2))
 				{
 					note = NULL;
 					msg_format("%^s%s corrupted mind backlashes your attack!",
@@ -2036,7 +1739,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		case GF_ICE:
 		{
 			if (seen) obvious = TRUE;
-			do_stun = (randint1(15) + 1) / (r + 1);
+			do_stun = rand_range(2, 16) / (r + 1);
 			if (r_ptr->flags3 & RF3_IM_COLD)
 			{
 				note = " resists a lot.";
@@ -2128,8 +1831,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				obvious = FALSE;
 				dam = 0;
 			}
-			else if (((r_ptr->flags1 & RF1_UNIQUE) &&
-				 (randint1(666) != 1)) ||
+			else if (((r_ptr->flags1 & RF1_UNIQUE) && !one_in_(666)) ||
 				 (r_ptr->level > randint1(dam / 30)))
 			{
 				note = " resists!";
@@ -2172,9 +1874,9 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			bool pet = FALSE;
 
 			if (seen) obvious = TRUE;
-			if (is_friendly(m_ptr) && (randint1(3) != 1))
+			if (is_friendly(m_ptr) && !one_in_(3))
 				friendly = TRUE;
-			if (is_pet(m_ptr) && (randint1(3) != 1))
+			if (is_pet(m_ptr) && !one_in_(3))
 				pet = TRUE;
 
 			/* Heal fully */
@@ -2565,7 +2267,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			if (r_ptr->flags4 & (RF4_BR_LITE))
 			{
 				note = " resists.";
-				dam *= 2; dam /= (randint1(6) + 6);
+				dam *= 2; dam /= (rand_range(7, 12));
 			}
 			else if (r_ptr->flags3 & (RF3_HURT_LITE))
 			{
@@ -2589,7 +2291,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			    (r_ptr->flags3 & RF3_HURT_LITE))
 			{
 				note = " resists.";
-				dam *= 2; dam /= (randint1(6) + 6);
+				dam *= 2; dam /= (rand_range(7, 12));
 			}
 			break;
 		}
@@ -3160,6 +2862,19 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		get_angry = TRUE;
 	}
 
+	/* Look to see if we've spotted a mimic */
+	if ((m_ptr->smart & SM_MIMIC) && obvious)
+	{
+		/* Toggle flag */
+		m_ptr->smart &= ~(SM_MIMIC);
+		
+		/* It is in the monster list now */
+		update_mon_vis(m_ptr->r_idx, 1);
+		
+		/* We've spotted it */
+		msg_format("You've found %s!", m_name);
+	}
+
 
 	/* Fear */
 	if (do_fear)
@@ -3192,14 +2907,36 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 		{
 			bool sad = FALSE;
 			
+			s16b old_m_d_head = mon_d_head;
+			
 			if (is_pet(m_ptr) && !(m_ptr->ml))
 				sad = TRUE;
-
-			/* Generate treasure, etc */
-			(void) monster_death(c_ptr->m_idx);
-		
-			/* Delete the monster */
-			delete_monster_idx(c_ptr->m_idx);
+			
+			/* Increase the number of dying monsters */
+			mon_d_head++;
+			
+			/* Go back to the start of the queue */
+			if (mon_d_head >= DEATH_MAX) mon_d_head = 0;
+			
+			if (mon_d_head == mon_d_tail)
+			{
+				/*
+				 * We have greater than the maximum number of monsters dying,
+				 * revert to the old number, and do not queue this one.
+				 */
+				mon_d_head = old_m_d_head;
+				
+				/* Hack XXX Die, but do not explode and call project() */
+				monster_death(c_ptr->m_idx, FALSE);
+				
+				/* Delete the monster */
+				delete_monster_idx(c_ptr->m_idx);
+			}
+			else
+			{
+				/* Queue the monster */
+				mon_d_m_idx[old_m_d_head] = c_ptr->m_idx;
+			}			
 
 			/* Give detailed messages if destroyed */
 			if (known && note)
@@ -3210,7 +2947,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 				}
 				else
 				{
-					mon_fight = TRUE;
+					p_ptr->mon_fight = TRUE;
 				}
 			}
 
@@ -3278,7 +3015,7 @@ static bool project_m(int who, int r, int y, int x, int dam, int typ)
 			}
 			else
 			{
-				mon_fight = TRUE;
+				p_ptr->mon_fight = TRUE;
 			}
 
 			/* Anger monsters */
@@ -3382,7 +3119,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 	if (!who) return (FALSE);
 
 
-	if (p_ptr->reflect && !a_rad && (randint1(10) != 1))
+	if (p_ptr->reflect && !a_rad && !one_in_(10))
 	{
 		int t_y, t_x;
 		int max_attempts = 10;
@@ -3393,8 +3130,8 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 		/* Choose 'new' target */
 		while (TRUE)
 		{
-			t_y = m_list[who].fy - 1 + randint1(3);
-			t_x = m_list[who].fx - 1 + randint1(3);
+			t_y = m_list[who].fy + rand_range(-1, 1);
+			t_x = m_list[who].fx + rand_range(-1, 1);
 			max_attempts--;
 
 
@@ -3418,7 +3155,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 
 		project(0, 0, t_y, t_x, dam, typ, (PROJECT_STOP | PROJECT_KILL));
 
-		disturb(1, 0);
+		disturb(TRUE);
 		return TRUE;
 	}
 
@@ -3487,7 +3224,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (p_ptr->oppose_pois) dam = (dam + 2) / 3;
 
 			if ((!(p_ptr->oppose_pois || p_ptr->resist_pois)) &&
-			     randint1(HURT_CHANCE) == 1)
+			     one_in_(HURT_CHANCE))
 			{
 				do_dec_stat(A_CON);
 			}
@@ -3512,16 +3249,16 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			{
 				set_poisoned(p_ptr->poisoned + randint0(dam) + 10);
 
-				if (randint1(5) == 1) /* 6 */
+				if (one_in_(5))
 				{
 					msg_print("You undergo a freakish metamorphosis!");
-					if (randint1(4) == 1) /* 4 */
+					if (one_in_(4))
 						do_poly_self();
 					else
 						mutate_player();
 				}
 
-				if (randint1(6) == 1)
+				if (one_in_(6))
 				{
 					inven_damage(set_acid_destroy, 2);
 				}
@@ -3598,7 +3335,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (p_ptr->resist_nethr)
 			{
 				if (p_ptr->prace != RACE_SPECTRE)
-					dam *= 6; dam /= (randint1(6) + 6);
+					dam *= 6; dam /= rand_range(7, 12);
 			}
 			else
 			{
@@ -3641,10 +3378,10 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			}
 			if (!p_ptr->resist_confu)
 			{
-				set_confused(p_ptr->confused + randint1(5) + 5);
+				set_confused(p_ptr->confused + rand_range(5, 10));
 			}
 
-			if (randint1(5) == 1)
+			if (one_in_(5))
 			{
 				inven_damage(set_cold_destroy, 3);
 			}
@@ -3659,19 +3396,19 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by a wave of anarchy!");
 			if (p_ptr->resist_chaos)
 			{
-				dam *= 6; dam /= (randint1(6) + 6);
+				dam *= 6; dam /= rand_range(7, 12);
 			}
 			if (!p_ptr->resist_confu)
 			{
-				(void)set_confused(p_ptr->confused + randint0(20) + 10);
+				(void)set_confused(p_ptr->confused + rand_range(20, 30));
 			}
 			if (!p_ptr->resist_chaos)
 			{
 				(void)set_image(p_ptr->image + randint1(10));
-				if (randint1(3) == 1)
+				if (one_in_(3))
 				{
 					msg_print("Your body is twisted by chaos!");
-					(void)gain_random_mutation(0);
+					(void)gain_mutation(0);
 				}
 			}
 			if (!p_ptr->resist_nethr && !p_ptr->resist_chaos)
@@ -3691,7 +3428,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 					lose_exp(5000 + (p_ptr->exp / 100) * MON_DRAIN_LIFE);
 				}
 			}
-			if (!p_ptr->resist_chaos || (randint1(9) == 1))
+			if (!p_ptr->resist_chaos || one_in_(9))
 			{
 				inven_damage(set_elec_destroy, 2);
 				inven_damage(set_fire_destroy, 2);
@@ -3706,14 +3443,14 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something sharp!");
 			if (p_ptr->resist_shard)
 			{
-				dam *= 6; dam /= (randint1(6) + 6);
+				dam *= 6; dam /= rand_range(7, 12);
 			}
 			else
 			{
 				(void)set_cut(p_ptr->cut + dam);
 			}
 
-			if (!p_ptr->resist_shard || (randint1(13) == 1))
+			if (!p_ptr->resist_shard || one_in_(13))
 			{
 				inven_damage(set_cold_destroy, 2);
 			}
@@ -3728,7 +3465,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by a loud noise!");
 			if (p_ptr->resist_sound)
 			{
-				dam *= 5; dam /= (randint1(6) + 6);
+				dam *= 5; dam /= rand_range(7, 12);
 			}
 			else
 			{
@@ -3736,7 +3473,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 				(void)set_stun(p_ptr->stun + k);
 			}
 
-			if (!p_ptr->resist_sound || (randint1(13) == 1))
+			if (!p_ptr->resist_sound || one_in_(13))
 			{
 				inven_damage(set_cold_destroy, 2);
 			}
@@ -3751,11 +3488,11 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something puzzling!");
 			if (p_ptr->resist_confu)
 			{
-				dam *= 5; dam /= (randint1(6) + 6);
+				dam *= 5; dam /= rand_range(7, 12);
 			}
 			if (!p_ptr->resist_confu)
 			{
-				(void)set_confused(p_ptr->confused + randint1(20) + 10);
+				(void)set_confused(p_ptr->confused + rand_range(10, 30));
 			}
 			take_hit(dam, killer);
 			break;
@@ -3767,11 +3504,11 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something static!");
 			if (p_ptr->resist_disen)
 			{
-				dam *= 6; dam /= (randint1(6) + 6);
+				dam *= 6; dam /= rand_range(7, 12);
 			}
 			else
 			{
-				(void)apply_disenchant(0);
+				apply_disenchant();
 			}
 			take_hit(dam, killer);
 			break;
@@ -3783,7 +3520,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something strange!");
 			if (p_ptr->resist_nexus)
 			{
-				dam *= 6; dam /= (randint1(6) + 6);
+				dam *= 6; dam /= rand_range(7, 12);
 			}
 			else
 			{
@@ -3823,7 +3560,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 				(void)set_cut(p_ptr->cut + (dam / 2));
 			}
 
-			if (!p_ptr->resist_shard || (randint1(12) == 1))
+			if (!p_ptr->resist_shard || one_in_(12))
 			{
 				inven_damage(set_cold_destroy, 3);
 			}
@@ -3836,7 +3573,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 		case GF_INERTIA:
 		{
 			if (fuzzy) msg_print("You are hit by something slow!");
-			(void)set_slow(p_ptr->slow + randint0(4) + 4);
+			(void)set_slow(p_ptr->slow + rand_range(4, 8));
 			take_hit(dam, killer);
 			break;
 		}
@@ -3847,11 +3584,11 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something!");
 			if (p_ptr->resist_lite)
 			{
-				dam *= 4; dam /= (randint1(6) + 6);
+				dam *= 4; dam /= rand_range(7, 12);
 			}
 			else if (!blind && !p_ptr->resist_blind)
 			{
-				(void)set_blind(p_ptr->blind + randint1(5) + 2);
+				(void)set_blind(p_ptr->blind + rand_range(2, 7));
 			}
 			if (p_ptr->prace == RACE_VAMPIRE)
 			{
@@ -3880,13 +3617,13 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			if (fuzzy) msg_print("You are hit by something!");
 			if (p_ptr->resist_dark)
 			{
-				dam *= 4; dam /= (randint1(6) + 6);
+				dam *= 4; dam /= rand_range(7, 12);
 
 				if (p_ptr->prace == RACE_VAMPIRE) dam = 0;
 			}
 			else if (!blind && !p_ptr->resist_blind)
 			{
-				(void)set_blind(p_ptr->blind + randint1(5) + 2);
+				(void)set_blind(p_ptr->blind + rand_range(2, 7));
 			}
 			if (p_ptr->wraith_form) hp_player(dam);
 			else take_hit(dam, killer);
@@ -3898,61 +3635,49 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 		{
 			if (fuzzy) msg_print("You are hit by a blast from the past!");
 
-#ifdef MUT3_RES_TIME
-			if (p_ptr->muta3 & MUT3_RES_TIME)
+			switch (randint1(10))
 			{
-				dam *= 4;
-				dam /= (randint1(6) + 6);
-				msg_print("You feel as if time is passing you by.");
-			}
-			else
-			{
-#endif /* MUT3_RES_TIME */
-				switch (randint1(10))
+				case 1: case 2: case 3: case 4: case 5:
 				{
-					case 1: case 2: case 3: case 4: case 5:
+					msg_print("You feel life has clocked back.");
+					lose_exp(100 + (p_ptr->exp / 100) * MON_DRAIN_LIFE);
+					break;
+				}
+
+				case 6: case 7: case 8: case 9:
+				{
+					switch (randint1(6))
 					{
-						msg_print("You feel life has clocked back.");
-						lose_exp(100 + (p_ptr->exp / 100) * MON_DRAIN_LIFE);
-						break;
+						case 1: k = A_STR; act = "strong"; break;
+						case 2: k = A_INT; act = "bright"; break;
+						case 3: k = A_WIS; act = "wise"; break;
+						case 4: k = A_DEX; act = "agile"; break;
+						case 5: k = A_CON; act = "hale"; break;
+						case 6: k = A_CHR; act = "beautiful"; break;
 					}
 
-					case 6: case 7: case 8: case 9:
+					msg_format("You're not as %s as you used to be...", act);
+
+					p_ptr->stat_cur[k] = (p_ptr->stat_cur[k] * 3) / 4;
+					if (p_ptr->stat_cur[k] < 3) p_ptr->stat_cur[k] = 3;
+					p_ptr->update |= (PU_BONUS);
+					break;
+				}
+
+				case 10:
+				{
+					msg_print("You're not as powerful as you used to be...");
+
+					for (k = 0; k < A_MAX; k++)
 					{
-						switch (randint1(6))
-						{
-							case 1: k = A_STR; act = "strong"; break;
-							case 2: k = A_INT; act = "bright"; break;
-							case 3: k = A_WIS; act = "wise"; break;
-							case 4: k = A_DEX; act = "agile"; break;
-							case 5: k = A_CON; act = "hale"; break;
-							case 6: k = A_CHR; act = "beautiful"; break;
-						}
-
-						msg_format("You're not as %s as you used to be...", act);
-
 						p_ptr->stat_cur[k] = (p_ptr->stat_cur[k] * 3) / 4;
 						if (p_ptr->stat_cur[k] < 3) p_ptr->stat_cur[k] = 3;
-						p_ptr->update |= (PU_BONUS);
-						break;
 					}
-
-					case 10:
-					{
-						msg_print("You're not as powerful as you used to be...");
-
-						for (k = 0; k < A_MAX; k++)
-						{
-							p_ptr->stat_cur[k] = (p_ptr->stat_cur[k] * 3) / 4;
-							if (p_ptr->stat_cur[k] < 3) p_ptr->stat_cur[k] = 3;
-						}
-						p_ptr->update |= (PU_BONUS);
-						break;
-					}
+					p_ptr->update |= (PU_BONUS);
+					break;
 				}
-#ifdef MUT3_RES_TIME
 			}
-#endif
+
 			take_hit(dam, killer);
 			break;
 		}
@@ -3964,7 +3689,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 			msg_print("Gravity warps around you.");
 			teleport_player(5);
 			if (!p_ptr->ffall)
-				(void)set_slow(p_ptr->slow + randint0(4) + 4);
+				(void)set_slow(p_ptr->slow + rand_range(4, 8));
 			if (!(p_ptr->resist_sound || p_ptr->ffall))
 			{
 				int k = (randint1((dam > 90) ? 35 : (dam / 3 + 5)));
@@ -3975,7 +3700,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 				dam = (dam * 2) / 3;
 			}
 
-			if (!p_ptr->ffall || (randint1(13) == 1))
+			if (!p_ptr->ffall || one_in_(13))
 			{
 				inven_damage(set_cold_destroy, 2);
 			}
@@ -4011,7 +3736,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 		case GF_OLD_SLOW:
 		{
 			if (fuzzy) msg_print("You are hit by something slow!");
-			(void)set_slow(p_ptr->slow + randint0(4) + 4);
+			(void)set_slow(p_ptr->slow + rand_range(4, 8));
 			break;
 		}
 
@@ -4052,7 +3777,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 		{
 			if (fuzzy) msg_print("Something falls from the sky on you!");
 			take_hit(dam, killer);
-			if (!p_ptr->resist_shard || (randint1(13) == 1))
+			if (!p_ptr->resist_shard || one_in_(13))
 			{
 				if (!p_ptr->immune_fire) inven_damage(set_fire_destroy, 2);
 				inven_damage(set_cold_destroy, 2);
@@ -4075,7 +3800,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 				(void)set_stun(p_ptr->stun + randint1(15));
 			}
 
-			if ((!(p_ptr->resist_cold || p_ptr->oppose_cold)) || (randint1(12) == 1))
+			if ((!(p_ptr->resist_cold || p_ptr->oppose_cold)) || one_in_(12))
 			{
 				if (!p_ptr->immune_cold) inven_damage(set_cold_destroy, 3);
 			}
@@ -4124,7 +3849,7 @@ static bool project_p(int who, int r, int y, int x, int dam, int typ, int a_rad)
 
 
 	/* Disturb */
-	disturb(1, 0);
+	disturb(TRUE);
 
 
 	/* Return "Anything seen?" */
@@ -4155,637 +3880,6 @@ int dist_to_line(int y, int x, int y1, int x1, int y2, int x2)
 	return ((d >= 0) ? d : 0 - d);
 }
 
-
-/*
- * Does the grid stop disintegration?
- */
-#define cave_stop_disintegration(C) \
-	((((C)->feat >= FEAT_PERM_EXTRA) && \
-	  ((C)->feat <= FEAT_PERM_SOLID)) || \
-	  ((C)->feat == FEAT_MOUNTAIN))
-
-
-/*
- * XXX XXX XXX
- * Modified version of los() for calculation of disintegration balls.
- * Disintegration effects are stopped by permanent walls and fields.
- */
-static bool in_disintegration_range(int y1, int x1, int y2, int x2)
-{
-	/* Delta */
-	int dx, dy;
-
-	/* Absolute */
-	int ax, ay;
-
-	/* Signs */
-	int sx, sy;
-
-	/* Fractions */
-	int qx, qy;
-
-	/* Scanners */
-	int tx, ty;
-
-	/* Scale factors */
-	int f1, f2;
-
-	/* Slope, or 1/Slope, of LOS */
-	int m;
-	
-	cave_type *c_ptr;
-
-
-	/* Extract the offset */
-	dy = y2 - y1;
-	dx = x2 - x1;
-
-	/* Extract the absolute offset */
-	ay = ABS(dy);
-	ax = ABS(dx);
-
-
-	/* Handle adjacent (or identical) grids */
-	if ((ax < 2) && (ay < 2)) return (TRUE);
-
-
-	/* Paranoia -- require "safe" origin */
-	/* if (!in_bounds(y1, x1)) return (FALSE); */
-
-
-	/* Directly South/North */
-	if (!dx)
-	{
-		/* South -- check for walls */
-		if (dy > 0)
-		{
-			for (ty = y1 + 1; ty < y2; ty++)
-			{
-				c_ptr = area(ty, x1);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* North -- check for walls */
-		else
-		{
-			for (ty = y1 - 1; ty > y2; ty--)
-			{
-				c_ptr = area(ty, x1);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* Assume los */
-		return (TRUE);
-	}
-
-	/* Directly East/West */
-	if (!dy)
-	{
-		/* East -- check for walls */
-		if (dx > 0)
-		{
-			for (tx = x1 + 1; tx < x2; tx++)
-			{
-				c_ptr = area(y1, tx);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* West -- check for walls */
-		else
-		{
-			for (tx = x1 - 1; tx > x2; tx--)
-			{
-				c_ptr = area(y1, tx);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* Assume los */
-		return (TRUE);
-	}
-
-
-	/* Extract some signs */
-	sx = (dx < 0) ? -1 : 1;
-	sy = (dy < 0) ? -1 : 1;
-
-
-	/* Vertical "knights" */
-	if (ax == 1)
-	{
-		if (ay == 2)
-		{
-			c_ptr = area(y1 + sy, x1);
-			
-			if (!cave_stop_disintegration(c_ptr)) return (TRUE);
-			
-			/* Fields can block disintegration to */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-			{
-				return (FALSE);
-			}
-		}
-	}
-
-	/* Horizontal "knights" */
-	else if (ay == 1)
-	{
-		if (ax == 2)
-		{
-			c_ptr = area(y1, x1 + sx);
-			
-			if (!cave_stop_disintegration(c_ptr)) return (TRUE);
-			
-			/* Fields can block disintegration to */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-			{
-				return (FALSE);
-			}
-		}
-	}
-
-
-	/* Calculate scale factor div 2 */
-	f2 = (ax * ay);
-
-	/* Calculate scale factor */
-	f1 = f2 << 1;
-
-
-	/* Travel horizontally */
-	if (ax >= ay)
-	{
-		/* Let m = dy / dx * 2 * (dy * dx) = 2 * dy * dy */
-		qy = ay * ay;
-		m = qy << 1;
-
-		tx = x1 + sx;
-
-		/* Consider the special case where slope == 1. */
-		if (qy == f2)
-		{
-			ty = y1 + sy;
-			qy -= f1;
-		}
-		else
-		{
-			ty = y1;
-		}
-
-		/* Note (below) the case (qy == f2), where */
-		/* the LOS exactly meets the corner of a tile. */
-		while (x2 - tx)
-		{
-			c_ptr = area(ty, tx);
-			
-			if (cave_stop_disintegration(c_ptr)) return (FALSE);
-			
-			/* Fields can block disintegration to */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-			{
-				return (FALSE);
-			}
-
-			qy += m;
-
-			if (qy < f2)
-			{
-				tx += sx;
-			}
-			else if (qy > f2)
-			{
-				ty += sy;
-				
-				c_ptr = area(ty, tx);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-				qy -= f1;
-				tx += sx;
-			}
-			else
-			{
-				ty += sy;
-				qy -= f1;
-				tx += sx;
-			}
-		}
-	}
-
-	/* Travel vertically */
-	else
-	{
-		/* Let m = dx / dy * 2 * (dx * dy) = 2 * dx * dx */
-		qx = ax * ax;
-		m = qx << 1;
-
-		ty = y1 + sy;
-
-		if (qx == f2)
-		{
-			tx = x1 + sx;
-			qx -= f1;
-		}
-		else
-		{
-			tx = x1;
-		}
-
-		/* Note (below) the case (qx == f2), where */
-		/* the LOS exactly meets the corner of a tile. */
-		while (y2 - ty)
-		{
-			c_ptr = area(ty, tx);
-			
-			if (cave_stop_disintegration(c_ptr)) return (FALSE);
-			
-			/* Fields can block disintegration to */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-			{
-				return (FALSE);
-			}
-
-			qx += m;
-
-			if (qx < f2)
-			{
-				ty += sy;
-			}
-			else if (qx > f2)
-			{
-				tx += sx;
-				
-				c_ptr = area(ty, tx);
-				
-				if (cave_stop_disintegration(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_PERM))
-				{
-					return (FALSE);
-				}
-				qx -= f1;
-				ty += sy;
-			}
-			else
-			{
-				tx += sx;
-				qx -= f1;
-				ty += sy;
-			}
-		}
-	}
-
-	/* Assume los */
-	return (TRUE);
-}
-
-/*
- * XXX XXX XXX
- * Modified version of los() for calculation of balls.
- * Balls are stopped by walls, and by fields.
- */
-static bool in_ball_range(int y1, int x1, int y2, int x2)
-{
-	/* Delta */
-	int dx, dy;
-
-	/* Absolute */
-	int ax, ay;
-
-	/* Signs */
-	int sx, sy;
-
-	/* Fractions */
-	int qx, qy;
-
-	/* Scanners */
-	int tx, ty;
-
-	/* Scale factors */
-	int f1, f2;
-
-	/* Slope, or 1/Slope, of LOS */
-	int m;
-	
-	cave_type *c_ptr;
-
-
-	/* Extract the offset */
-	dy = y2 - y1;
-	dx = x2 - x1;
-
-	/* Extract the absolute offset */
-	ay = ABS(dy);
-	ax = ABS(dx);
-
-
-	/* Handle adjacent (or identical) grids */
-	if ((ax < 2) && (ay < 2)) return (TRUE);
-
-
-	/* Paranoia -- require "safe" origin */
-	/* if (!in_bounds(y1, x1)) return (FALSE); */
-
-
-	/* Directly South/North */
-	if (!dx)
-	{
-		/* South -- check for walls */
-		if (dy > 0)
-		{
-			for (ty = y1 + 1; ty < y2; ty++)
-			{
-				c_ptr = area(ty, x1);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block magic */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* North -- check for walls */
-		else
-		{
-			for (ty = y1 - 1; ty > y2; ty--)
-			{
-				c_ptr = area(ty, x1);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block balls */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* Assume los */
-		return (TRUE);
-	}
-
-	/* Directly East/West */
-	if (!dy)
-	{
-		/* East -- check for walls */
-		if (dx > 0)
-		{
-			for (tx = x1 + 1; tx < x2; tx++)
-			{
-				c_ptr = area(y1, tx);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block balls */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* West -- check for walls */
-		else
-		{
-			for (tx = x1 - 1; tx > x2; tx--)
-			{
-				c_ptr = area(y1, tx);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block balls */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-			}
-		}
-
-		/* Assume los */
-		return (TRUE);
-	}
-
-
-	/* Extract some signs */
-	sx = (dx < 0) ? -1 : 1;
-	sy = (dy < 0) ? -1 : 1;
-
-
-	/* Vertical "knights" */
-	if (ax == 1)
-	{
-		if (ay == 2)
-		{
-			c_ptr = area(y1 + sy, x1);
-			
-			/* Fields can block balls */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-			{
-				return (FALSE);
-			}
-			
-			if (cave_floor_grid(c_ptr)) return (TRUE);
-		}
-	}
-
-	/* Horizontal "knights" */
-	else if (ay == 1)
-	{
-		if (ax == 2)
-		{
-			c_ptr = area(y1, x1 + sx);
-			
-			/* Fields can block balls */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-			{
-				return (FALSE);
-			}
-			
-			if (cave_floor_grid(c_ptr)) return (TRUE);
-		}
-	}
-
-
-	/* Calculate scale factor div 2 */
-	f2 = (ax * ay);
-
-	/* Calculate scale factor */
-	f1 = f2 << 1;
-
-
-	/* Travel horizontally */
-	if (ax >= ay)
-	{
-		/* Let m = dy / dx * 2 * (dy * dx) = 2 * dy * dy */
-		qy = ay * ay;
-		m = qy << 1;
-
-		tx = x1 + sx;
-
-		/* Consider the special case where slope == 1. */
-		if (qy == f2)
-		{
-			ty = y1 + sy;
-			qy -= f1;
-		}
-		else
-		{
-			ty = y1;
-		}
-
-		/* Note (below) the case (qy == f2), where */
-		/* the LOS exactly meets the corner of a tile. */
-		while (x2 - tx)
-		{
-			c_ptr = area(ty, tx);
-			
-			if (!cave_floor_grid(c_ptr)) return (FALSE);
-			
-			/* Fields can block balls */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-			{
-				return (FALSE);
-			}
-
-			qy += m;
-
-			if (qy < f2)
-			{
-				tx += sx;
-			}
-			else if (qy > f2)
-			{
-				ty += sy;
-				
-				c_ptr = area(ty, tx);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block balls */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-				qy -= f1;
-				tx += sx;
-			}
-			else
-			{
-				ty += sy;
-				qy -= f1;
-				tx += sx;
-			}
-		}
-	}
-
-	/* Travel vertically */
-	else
-	{
-		/* Let m = dx / dy * 2 * (dx * dy) = 2 * dx * dx */
-		qx = ax * ax;
-		m = qx << 1;
-
-		ty = y1 + sy;
-
-		if (qx == f2)
-		{
-			tx = x1 + sx;
-			qx -= f1;
-		}
-		else
-		{
-			tx = x1;
-		}
-
-		/* Note (below) the case (qx == f2), where */
-		/* the LOS exactly meets the corner of a tile. */
-		while (y2 - ty)
-		{
-			c_ptr = area(ty, tx);
-			
-			if (!cave_floor_grid(c_ptr)) return (FALSE);
-			
-			/* Fields can block balls */
-			if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-			{
-				return (FALSE);
-			}
-
-			qx += m;
-
-			if (qx < f2)
-			{
-				ty += sy;
-			}
-			else if (qx > f2)
-			{
-				tx += sx;
-				
-				c_ptr = area(ty, tx);
-				
-				if (!cave_floor_grid(c_ptr)) return (FALSE);
-				
-				/* Fields can block disintegration to */
-				if (fields_have_flags(c_ptr->fld_idx, FIELD_INFO_NO_MAGIC))
-				{
-					return (FALSE);
-				}
-				qx -= f1;
-				ty += sy;
-			}
-			else
-			{
-				tx += sx;
-				qx -= f1;
-				ty += sy;
-			}
-		}
-	}
-
-	/* Assume los */
-	return (TRUE);
-}
 
 
 
@@ -4980,6 +4074,10 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 
 	cave_type *c_ptr;
 
+	/* Are there no monsters queued to die? */
+	bool mon_explode = (mon_d_head == mon_d_tail) ? TRUE : FALSE;
+	
+	
 	/* Hack -- some weapons always stop at monsters */
 	if (typ == GF_ROCKET) flg |= PROJECT_STOP;
 
@@ -5061,7 +4159,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 
 
 	/* Calculate the projection path */
-	path_n = project_path(path_g, MAX_RANGE, y1, x1, y2, x2, flg);
+	path_n = project_path(path_g, y1, x1, y2, x2, flg);
 
 
 	/* Hack -- Handle stuff */
@@ -5103,17 +4201,10 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 			/* Only do visuals if the player can "see" the bolt */
 			if (panel_contains(y, x) && player_has_los_grid(c_ptr))
 			{
-				u16b p;
-
-				byte a;
-				char c;
+				byte a, c;
 
 				/* Obtain the bolt pict */
-				p = bolt_pict(oy, ox, y, x, typ);
-
-				/* Extract attr/char */
-				a = PICT_A(p);
-				c = PICT_C(p);
+				bolt_pict(oy, ox, y, x, typ, &a, &c);
 
 				/* Visual effects */
 				print_rel(c, a, y, x);
@@ -5132,11 +4223,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 				if (flg & (PROJECT_BEAM))
 				{
 					/* Obtain the explosion pict */
-					p = bolt_pict(y, x, y, x, typ);
-
-					/* Extract attr/char */
-					a = PICT_A(p);
-					c = PICT_C(p);
+					bolt_pict(y, x, y, x, typ, &a, &c);
 
 					/* Visual effects */
 					print_rel(c, a, y, x);
@@ -5190,6 +4277,8 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 			int brad = 0;
 			int bdis = 0;
 			int cdis;
+			int sl = 0;
+			int sq = 0;
 
 			/* Not done yet */
 			bool done = FALSE;
@@ -5243,7 +4332,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 				}
 
 				/* Ripple outwards */
-				mmove2(&by, &bx, y1, x1, y2, x2);
+				mmove2(&by, &bx, y1, x1, y2, x2, &sl, &sq);
 
 				/* Find the next ripple */
 				bdis++;
@@ -5344,19 +4433,12 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 				/* Only do visuals if the player can "see" the blast */
 				if (panel_contains(y, x) && player_has_los_grid(c_ptr))
 				{
-					u16b p;
-
-					byte a;
-					char c;
+					byte a, c;
 
 					drawn = TRUE;
 
 					/* Obtain the explosion pict */
-					p = bolt_pict(y, x, y, x, typ);
-
-					/* Extract attr/char */
-					a = PICT_A(p);
-					c = PICT_C(p);
+					bolt_pict(y, x, y, x, typ, &a, &c);
 
 					/* Visual effects -- Display */
 					print_rel(c, a, y, x);
@@ -5439,7 +4521,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 				
 				/* Affect fields on the grid */
 				field_hook(&area(y, x)->fld_idx,
-					FIELD_ACT_MAGIC_TARGET, (void *) &f_m_t);
+					FIELD_ACT_MAGIC_TARGET, (vptr) &f_m_t);
 				
 				/* Restore notice variable */
 				notice = f_m_t.notice;
@@ -5459,7 +4541,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 				
 				/* Affect fields on the grid */
 				field_hook(&area(y, x)->fld_idx,
-					FIELD_ACT_MAGIC_TARGET, (void *) &f_m_t);
+					FIELD_ACT_MAGIC_TARGET, (vptr) &f_m_t);
 				
 				/* Restore notice variable */
 				notice = f_m_t.notice;
@@ -5545,8 +4627,8 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 			{
 				monster_race *ref_ptr = &r_info[m_list[area(y,x)->m_idx].r_idx];
 
-				if ((ref_ptr->flags2 & RF2_REFLECTING) &&
-				    (randint1(10) != 1) && (dist_hack > 1))
+				if ((ref_ptr->flags2 & RF2_REFLECTING) && !one_in_(10) &&
+					 (dist_hack > 1))
 				{
 					int t_y, t_x;
 					int max_attempts = 10;
@@ -5554,8 +4636,8 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 					/* Choose 'new' target */
 					do
 					{
-						t_y = y_saver - 1 + randint1(3);
-						t_x = x_saver - 1 + randint1(3);
+						t_y = y_saver + rand_range(-1, 1);
+						t_x = x_saver + rand_range(-1, 1);
 						max_attempts--;
 					}
 
@@ -5574,6 +4656,7 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 						ref_ptr->r_flags2 |= RF2_REFLECTING;
 					}
 
+					/* Recursion... */
 					project(area(y,x)->m_idx, 0, t_y, t_x,  dam, typ, flg);
 				}
 				else
@@ -5637,6 +4720,42 @@ bool project(int who, int rad, int y, int x, int dam, int typ, u16b flg)
 		}
 	}
 
+	if (mon_explode)
+	{
+		/*
+		 * Run through the queue of monsters waiting to die,
+		 * calling monster_death() for each.
+		 *
+		 * This prevents chain reactions of explosions from
+		 * causing a stack smash, by only having one level
+		 * of recursion.
+		 *
+		 * Monster_death() might call project() again - but
+		 * if that happens, then mon_explode is FALSE, and
+		 * it will fall back to us to process the monsters
+		 * killed by that explosion.
+		 */
+	
+		while (mon_d_tail != mon_d_head)
+		{
+			/* Generate treasure, etc */
+			(void)monster_death(mon_d_m_idx[mon_d_tail], TRUE);
+			
+			/* Delete the monster */
+			delete_monster_idx(mon_d_m_idx[mon_d_tail]);
+			
+			/*
+			 * Increase mon_d_tail after the death.
+			 * (This means that mon_explode will be FALSE in other
+			 * calls to this function.)
+			 */
+			mon_d_tail++;
+			
+			/* Cycle back to the start */
+			if (mon_d_tail >= DEATH_MAX) mon_d_tail = 0;
+		}
+	}
+	
 	/* Return "something was noticed" */
 	return (notice);
 }

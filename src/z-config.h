@@ -217,17 +217,6 @@
 
 
 /*
- * OPTION: Allow monsters to "flee" when hit hard
- */
-#define ALLOW_FEAR
-
-/*
- * OPTION: Allow monsters to "flee" from strong players
- */
-#define ALLOW_TERROR
-
-
-/*
  * OPTION: Allow parsing of the ascii template files in "init.c".
  * This must be defined if you do not have valid binary image files.
  * It should be usually be defined anyway to allow easy "updating".
@@ -299,21 +288,6 @@
  * Allow "Cheaters" to yield "high scores"
  */
 /* #define SCORE_CHEATERS */
-
-
-
-/*
- * OPTION: Allow use of the "flow_by_smell" and "flow_by_sound"
- * software options, which enable "monster flowing".
- */
-#define MONSTER_FLOW
-
-
-/*
- * OPTION: Maximum flow depth when using "MONSTER_FLOW"
- */
-#define MONSTER_FLOW_DEPTH 32
-
 
 
 #ifdef USE_SPECIAL
@@ -458,7 +432,7 @@
 #define DEFAULT_X11_FONT_7		"5x8"
 
 /*
- * OPTION: Gamma correct X11 colours.
+ * OPTION: Gamma correct colours.
  */
 
 #define SUPPORT_GAMMA
@@ -486,7 +460,6 @@
 # undef ALLOW_COLORS
 # undef ALLOW_VISUALS
 # undef ALLOW_MACROS
-# undef MONSTER_FLOW
 # undef ALLOW_OLD_SAVEFILES
 # undef ALLOW_BORG
 # undef ALLOW_WIZARD
@@ -514,9 +487,6 @@
 #endif
 
 
-/* Should the player know his / her starting life rate? */
-/* # define SHOW_LIFE_RATE */
-
 /* Do we want different characters for different races? */
 /*
  * Too slow for general use - note that the 16x16 tiles use a
@@ -538,23 +508,11 @@
  */
 /* #define MONK_HACK */
 
-/* Wizard mode testing options: */
-
-/* DEBUGGING: Testing upkeep   (This probably isn't needed any more) */
-/* # define TRACK_FRIENDS */
-
-
 /*
  * Check the modification time of *_info.raw files
  * (by Keldon Jones)
  */
 #define CHECK_MODIFICATION_TIME
-
-/*
- * Use the new sorting routines for creation
- * of the monster allocation table
- */
-#define SORT_R_INFO
 
 /*
  * Use a scripting language

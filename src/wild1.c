@@ -19,50 +19,133 @@
 int wild_stairs_x = 0;
 int wild_stairs_y = 0;
 
-/* Is the building a store? */
-bool build_is_store(s16b type)
+/*
+ * Building information
+ *
+ * Number currently created in this town
+ * Field to place, if applicable.
+ * Type of building
+ * Pop, magic, law levels
+ * Rarity
+ */
+wild_building_type wild_build[MAX_CITY_BUILD] =
 {
-	switch (type)
-	{
-		case BUILD_STORE_GENERAL:
-		case BUILD_STORE_ARMOURY:
-		case BUILD_STORE_WEAPON:
-		case BUILD_STORE_TEMPLE:
-		case BUILD_STORE_ALCHEMIST:
-		case BUILD_STORE_MAGIC:
-		case BUILD_STORE_BLACK:
-		case BUILD_STORE_HOME:
-		case BUILD_STORE_BOOK:
-		{
-			/* It is a store */
-			return(TRUE);
-		}
-	}
-	
-	/* Not a store */
-	return(FALSE);
-}
+	{0, FT_STORE_GENERAL,		BT_STORE,	100, 150, 150, 5},
+	{0,	FT_STORE_ARMOURY,		BT_STORE,	150, 150, 100, 2},
+	{0,	FT_STORE_WEAPON,		BT_STORE,	150, 150, 100, 2},
+	{0,	FT_STORE_TEMPLE,		BT_STORE,	150, 150, 200, 2},
+	{0,	FT_STORE_ALCHEMIST,		BT_STORE,	100, 150, 200, 2},
+	{0, FT_STORE_MAGIC,			BT_STORE,	200, 150, 200, 2},
+	{0,	FT_STORE_BLACK,			BT_STORE,	250, 150, 50, 10},
+	{0,	FT_STORE_HOME,			BT_STORE,	150, 150, 150, 5},
+	{0,	FT_STORE_BOOK,			BT_STORE,	250, 150, 150, 5},
+	{0,		0,					BT_GENERAL,	150, 150, 150, 10},
+	{0,	FT_BUILD_WEAPON,		BT_BUILD,	100, 150, 150, 10},
+	{0,	FT_BUILD_RECHARGE,		BT_BUILD,	200, 150, 150, 20},
+	{0,	FT_BUILD_PLUS_WEAPON,	BT_BUILD,	200, 150, 200, 20},
+	{0,	FT_BUILD_PLUS_ARMOUR,	BT_BUILD,	200, 150, 200, 20},
+	{0,	FT_BUILD_MUTATE,		BT_BUILD,	200, 150, 50, 50},
+	{0,		0,					BT_GENERAL,	150, 150, 150, 1},
+	{0,		0,					BT_GENERAL,	150, 150, 150, 1},
+	{0,	FT_BUILD_MAP,			BT_BUILD,	150, 150, 150, 10},
+	{0, FT_STORE_WEAPON1,		BT_STORE,   100, 100, 100, 10},
+	{0, FT_STORE_WEAPON2,		BT_STORE,   100, 150, 100, 20},
+	{0, FT_STORE_WEAPON3,		BT_STORE,   100, 50, 100, 40},
+	{0, FT_STORE_WEAPON4,		BT_STORE,	150, 200, 100, 80},
+	{0, FT_STORE_WEAPON5,		BT_STORE,	200, 200, 50, 160},
+	{0, FT_STORE_ARMOUR1,		BT_STORE,	100, 100, 100, 10},
+	{0, FT_STORE_ARMOUR2,		BT_STORE,	100, 150, 100, 20},
+	{0, FT_STORE_ARMOUR3,		BT_STORE,	100, 150, 100, 40},
+	{0, FT_STORE_ARMOUR4,		BT_STORE,	150, 200, 100, 80},
+	{0, FT_STORE_ARMOUR5,		BT_STORE,	200, 250, 50, 160},
+	{0, FT_STORE_SWORD0,		BT_STORE,	100, 50, 100, 10},
+	{0, FT_STORE_SWORD1,		BT_STORE,	100, 50, 100, 10},
+	{0, FT_STORE_SWORD2,		BT_STORE,	100, 100, 100, 10},
+	{0, FT_STORE_SWORD3,		BT_STORE,	150, 150, 100, 20},
+	{0, FT_STORE_SWORD4,		BT_STORE,	200, 150, 100, 40},
+	{0, FT_STORE_SWORD5,		BT_STORE,	200, 200, 50, 80},
+	{0, FT_STORE_SHIELD0,		BT_STORE, 	100, 100, 100, 10},
+	{0, FT_STORE_SHIELD1,		BT_STORE, 	100, 100, 100, 10},
+	{0, FT_STORE_SHIELD2,		BT_STORE, 	100, 150, 100, 10},
+	{0, FT_STORE_SHIELD3,		BT_STORE, 	150, 150, 100, 20},
+	{0, FT_STORE_SHIELD4,		BT_STORE, 	200, 200, 50, 40},
+	{0, FT_STORE_SHIELD5,		BT_STORE, 	200, 250, 50, 80},
+	{0, FT_STORE_AXE0,			BT_STORE,	150, 50, 100, 10},
+	{0, FT_STORE_AXE1,			BT_STORE,	150, 50, 100, 10},
+	{0, FT_STORE_AXE2,			BT_STORE,	150, 100, 100, 10},
+	{0, FT_STORE_AXE3,			BT_STORE,	150, 100, 100, 20},
+	{0, FT_STORE_AXE4,			BT_STORE,	200, 150, 100, 40},
+	{0, FT_STORE_AXE5,			BT_STORE,	200, 150, 50, 80},
+	{0, FT_STORE_AMMO0,			BT_STORE,	150, 100, 100, 10},
+	{0, FT_STORE_AMMO1,			BT_STORE,	200, 200, 150, 20},
+	{0, FT_STORE_AMMO2,			BT_STORE,	250, 250, 150, 40},
+	{0, FT_STORE_FLET0,			BT_STORE,	100, 50, 100, 10},
+	{0, FT_STORE_FLET1,			BT_STORE,	100, 100, 100, 10},
+	{0, FT_STORE_FLET2,			BT_STORE,	150, 150, 150, 40},
+	{0, FT_STORE_FLET3,			BT_STORE,	150, 200, 150, 160},
+	{0, FT_STORE_WARHALL0,		BT_STORE,	50, 50, 50, 10},
+	{0, FT_STORE_WARHALL1,		BT_STORE,	50, 50, 50, 20},
+	{0, FT_STORE_WARHALL2,		BT_STORE,	100, 50, 100, 40},
+	{0, FT_STORE_WARHALL3,		BT_STORE,	100, 100, 100, 50},
+	{0, FT_STORE_WARHALL4,		BT_STORE,	150, 100, 200, 80},
+	{0, FT_STORE_WARHALL5,		BT_STORE,	150, 150, 250, 100},
+	{0, FT_STORE_CLOTH0,		BT_STORE,	200, 100, 150, 10},
+	{0, FT_STORE_CLOTH1,		BT_STORE,	150, 150, 150, 10},
+	{0, FT_STORE_HARMOUR0,		BT_STORE,	150, 100, 100, 10},
+	{0, FT_STORE_HARMOUR1,		BT_STORE,	150, 100, 100, 10},
+	{0, FT_STORE_HARMOUR2,		BT_STORE,	200, 150, 150, 20},
+	{0, FT_STORE_HARMOUR3,		BT_STORE,	200, 150, 150, 40},
+	{0, FT_STORE_HARMOUR4,		BT_STORE,	250, 200, 200, 80},
+	{0, FT_STORE_HARMOUR5,		BT_STORE,	250, 250, 200, 160},
+	{0, FT_STORE_HAT0,			BT_STORE,	200, 50, 150, 10},
+	{0, FT_STORE_HAT1,			BT_STORE,	200, 150, 150, 10},
+	{0, FT_STORE_HAT2,			BT_STORE,	200, 150, 200, 20},
+	{0, FT_STORE_HAT3,			BT_STORE,	250, 200, 200, 160},
+	{0, FT_STORE_JEWEL0,		BT_STORE,	150, 150, 150, 10},
+	{0, FT_STORE_JEWEL1,		BT_STORE,	150, 200, 150, 20},
+	{0, FT_STORE_JEWEL2,		BT_STORE,	200, 200, 200, 40},
+	{0, FT_STORE_JEWEL3,		BT_STORE,	200, 250, 200, 80},
+	{0, FT_STORE_JEWEL4,		BT_STORE,	200, 250, 250, 160},
+	{0, FT_STORE_STATUE0,		BT_STORE,	250, 150, 150, 20},
+	{0, FT_STORE_STATUE1,		BT_STORE,	250, 150, 150, 20},
+	{0, FT_STORE_FIGUR0,		BT_STORE,	200, 200, 150, 20},
+	{0, FT_STORE_FIGUR1,		BT_STORE,	200, 200, 200, 20},
+	{0, FT_STORE_POTION0,		BT_STORE,	150, 150, 150, 10},
+	{0, FT_STORE_POTION1,		BT_STORE,	150, 150, 150, 20},
+	{0, FT_STORE_POTION2,		BT_STORE,	200, 200, 200, 40},
+	{0, FT_STORE_POTION3,		BT_STORE,	200, 200, 200, 80},
+	{0, FT_STORE_POTION4,		BT_STORE,	200, 200, 200, 160},
+	{0, FT_STORE_SCROLL0,		BT_STORE,	150, 150, 150, 10},
+	{0, FT_STORE_SCROLL1,		BT_STORE,	150, 150, 150, 20},
+	{0, FT_STORE_SCROLL2,		BT_STORE,	200, 200, 200, 40},
+	{0, FT_STORE_SCROLL3,		BT_STORE,	200, 200, 200, 80},
+	{0, FT_STORE_SCROLL4,		BT_STORE,	200, 200, 200, 160},
+	{0, FT_STORE_MAGIC0,		BT_STORE,	50, 150, 200, 10},
+	{0, FT_STORE_MAGIC1,		BT_STORE,	100, 200, 200, 10},
+	{0, FT_STORE_MAGIC2,		BT_STORE,	100, 200, 200, 20},
+	{0, FT_STORE_MAGIC3,		BT_STORE,	150, 250, 250, 40},
+	{0, FT_STORE_MAGIC4,		BT_STORE,	200, 250, 250, 60},
+	{0, FT_STORE_BOOK1,			BT_STORE,	200, 250, 250, 20},
+	{0, FT_STORE_TEMPLE1,		BT_STORE,	50, 100, 150, 10},
+	{0, FT_STORE_TEMPLE2,		BT_STORE,	100, 150, 150, 20},
+	{0, FT_STORE_TEMPLE3,		BT_STORE,	150, 200, 200, 80},
+	{0, FT_STORE_SUPPLIES0,		BT_STORE,	150, 50, 150, 40},
+	{0, FT_STORE_SUPPLIES1,		BT_STORE,	100, 100, 150, 20},
+	{0, FT_STORE_BLACK1,		BT_STORE,	200, 150, 50, 40},
+	{0, FT_STORE_BLACK2,		BT_STORE,	200, 200, 50, 160},
+	{0, FT_STORE_ALCHEMY1,		BT_STORE,	100, 150, 150, 10},
+	{0, FT_STORE_ALCHEMY2,		BT_STORE,	150, 200, 150, 40},
+	{0, FT_STORE_JUNK,			BT_STORE,	200, 50, 150, 10},
+	{0, FT_STORE_FOOD,			BT_STORE,	200, 100, 150, 10},
+	{0, FT_BUILD_LIBRARY,		BT_BUILD,	200, 200, 200, 20},
+	{0, FT_BUILD_CASINO,		BT_BUILD,	100, 200, 200, 20},
+	{0, FT_BUILD_INN,			BT_BUILD,	100, 100, 200, 5},
+	{0, FT_BUILD_HEALER,		BT_BUILD,	250, 250, 200, 20},
+};
 
-/* Is the building a general feature? */
-bool build_is_general(byte type)
-{
-	switch (type)
-	{
-		case BUILD_STAIRS:
-		case BUILD_NONE:
-		case BUILD_BLANK:
-		{
-			/* It is a general town feature */
-			return(TRUE);
-		}
-	}
-	
-	/* Nope it isn't */
-	return (FALSE);
-}
 
 /* Find a place for the player */
-static void place_player_start(u32b *x, u32b *y, u16b this_town)
+static void place_player_start(s32b *x, s32b *y, u16b this_town)
 {
 	/* Hack - Reset player position to be on the stairs in town */
 	*x = town[this_town].x * 16 + wild_stairs_x;
@@ -75,64 +158,75 @@ static u16b select_building(byte pop, byte magic, byte law, u16b *build,
 	 int build_num)
 {
 	int i;
-	
-	u16b b_select[MAX_CITY_BUILD];
 
 	s32b total = 0;
-	
+
 	/* Draw stairs first for small towns */
-	if ((build_num < 10) && (!build[BUILD_STAIRS])) return(BUILD_STAIRS);
-	
-	/* Next, we need a general store */
-	if (!build[BUILD_STORE_GENERAL]) return(BUILD_STORE_GENERAL);
-	
+	if ((build_num < 11) && (!build[BUILD_STAIRS])) return (BUILD_STAIRS);
+
+
 	for (i = 0; i < MAX_CITY_BUILD; i++)
 	{
-		/* All have equal prob. + effect due to total count */
-		b_select[i] = 1 + build[i] * 2;
-	}
-	
-	/* Dungeons are not in large cities */
-	if (build_num > 11) b_select[BUILD_STAIRS] = 0;
-	
-	/* Blank buildings don't exist for small towns */
-	if (build_num < 10)
-	{
-		b_select[BUILD_NONE] = 0;
-		b_select[BUILD_BLANK] = 0;
-		b_select[BUILD_RECHARGE] = 0;
-		b_select[BUILD_PLUS_WEAPON] = 0;
-		b_select[BUILD_PLUS_ARMOUR] = 0;
-		b_select[BUILD_MUTATE] = 0;
-		b_select[BUILD_MAP] = 0;
+		/* Work out total effects due to location */
+		total = (ABS(pop - wild_build[i].pop) +
+				ABS(magic - wild_build[i].magic) +
+				ABS(law - wild_build[i].law)) / 5 + 1;
+
+		/* Effect due to rarity */
+		total += wild_build[i].rarity;
+		
+		/* Effect due to total count */
+		total +=  build[i] * 20;
+
+		/* calculate probability based on location */
+		wild_build[i].gen = ((u16b) MAX_SHORT / total);
 	}
 
-	/* Blank buildings are much more common for large towns */
+	/* Effects for cities */
+	if (build_num > 11)
+	{
+		/* Hack - Dungeons are not in large cities */
+		wild_build[BUILD_STAIRS].gen = 0;
+
+		/* Hack - Increase possibility of 'general' features */
+		for (i = 0; i < MAX_CITY_BUILD; i++)
+		{
+			if (wild_build[i].type == BT_GENERAL)
+			{
+				wild_build[i].gen *= ((build_num - 5) / 6);
+			}
+		}
+	}
+	/* Some buildings don't exist for small towns */
 	else
 	{
-		b_select[BUILD_NONE] = 1;
-		b_select[BUILD_BLANK] = 1;
-		
-		/* Some buildings are normally rare */
-		b_select[BUILD_RECHARGE] += 2;
-		b_select[BUILD_PLUS_WEAPON] += 2;
-		b_select[BUILD_PLUS_ARMOUR] += 2;
-		b_select[BUILD_MUTATE] += 4;
-		b_select[BUILD_MAP] +=2;
+		for (i = 0; i < MAX_CITY_BUILD; i++)
+		{
+			/* Only stairs and stores in small towns. */
+			if (wild_build[i].type != BT_STORE)
+			{
+				wild_build[i].gen = 0;
+			}
+		}
 	}
-	
-	/* Not more than one home */
-	if (build[BUILD_STORE_HOME]) b_select[BUILD_STORE_HOME] = 0;
-	
+
+	/* Hack - Not more than one home */
+	if (build[BUILD_STORE_HOME])
+	{
+		wild_build[BUILD_STORE_HOME].gen = 0;
+	}
+
+	total = 0;
+
 	/* Calculate total */
 	for (i = 0; i < MAX_CITY_BUILD; i++)
 	{
-		if (b_select[i]) total += 256 / b_select[i];
+		total += wild_build[i].gen;
 	}
 
 	/* Pick a building */
 	total = randint0(total);
-	
+
 	/* Later add checks for silliness */
 	/* (A small town with 5 "homes" would be silly */
 
@@ -140,30 +234,17 @@ static u16b select_building(byte pop, byte magic, byte law, u16b *build,
 	/* Find which building we've got */
 	for (i = 0; i < MAX_CITY_BUILD; i++)
 	{
-		if (b_select[i]) total -= 256 / b_select[i];
-		
-		if (total <= 0) return (i);
+		total -= wild_build[i].gen;
+
+		if (total < 0) return (i);
 	}
 
 
 	/* paranoia - we didn't find it */
 	msg_print("FAILED to generate building!");
-	
-	return(0);
-	
-#if 0	
-	/* Just select the buildings in order... */
-	while (TRUE)
-	{
-		for (i = 0; i < MAX_CITY_BUILD; i++)
-		{
-			if (build[i] == count) return (i);
-		}
-	
-		count++;
-	}
-#endif /* 0 */	
-} 
+
+	return (0);
+}
 
 static void general_init(int town_num, int store_num, byte general_type)
 {
@@ -183,18 +264,86 @@ static void general_init(int town_num, int store_num, byte general_type)
 }
 
 
-/* Create a city + contained stores and buildings */
+byte build_x[WILD_BLOCK_SIZE * WILD_BLOCK_SIZE];
+byte build_y[WILD_BLOCK_SIZE * WILD_BLOCK_SIZE];
+static byte build_pop[WILD_BLOCK_SIZE * WILD_BLOCK_SIZE];
+static u16b build_count;
+
+
+/*
+ * Recursive function used to generate towns with no islands
+ */
+static void fill_town(byte x, byte y)
+{
+	byte i;
+
+	/* Hack - deliberate braces to lower memory cost of recursion */
+	{
+		u16b *block_data = &temp_block[y][x];
+
+		/* Do not continue if hit a previously done area. */
+		if (*block_data == 1) return;
+
+		/* Do not redo a building */
+		if (*block_data == 2) return;
+
+		/* Save the square */
+		build_pop[build_count] = *block_data / WILD_BLOCK_SIZE;
+
+		/* Do not redo this square */
+		*block_data = 2;
+	}
+
+	build_x[build_count] = x;
+	build_y[build_count] = y;
+
+	/* Increment store counter */
+	build_count++;
+
+	/* Look at adjacent squares */
+	for (i = 0; i < 8; i++)
+	{
+		/* Recurse */
+		fill_town(x + ddx_ddd[i], y + ddy_ddd[i]);
+	}
+}
+
+
+/*
+ * Driver function for the fill_town() routine
+ */
+byte fill_town_driver(void)
+{
+	/* Paranoia - middle square must be in the town */
+	if (!temp_block[WILD_BLOCK_SIZE / 2][WILD_BLOCK_SIZE / 2]) return (0);
+
+	build_count = 0;
+
+	/* 'Fill' the town with buildings, stopping at the walls */
+	fill_town(WILD_BLOCK_SIZE / 2, WILD_BLOCK_SIZE / 2);
+
+	/* Return number of buildings allocated */
+	return (build_count);
+}
+
+
+/*
+ * Create a city + contained stores and buildings
+ */
 static bool create_city(int x, int y, int town_num)
 {
 	int i, j, k, l;
-	
+
+	/* Hack - fix this XXX XXX */
+	/* First town must have a low pop */
+
 /*	int pop = wild[y][x].trans.pop_map; */
 	int pop = (1 << randint0(7)) + 128;
 	int law = wild[y][x].trans.law_map;
-	int magic, temp;
-	int count = 0;	
+	int magic;
 	int build_num = 0, build_tot;
 	byte building;
+	byte count;
 	byte gate_value[MAX_GATES];
 	byte gate_num[MAX_GATES];
 
@@ -207,107 +356,96 @@ static bool create_city(int x, int y, int town_num)
 	u16b build[MAX_CITY_BUILD];
 	u16b build_list[WILD_BLOCK_SIZE * WILD_BLOCK_SIZE];
 
+	/* Hack - the first town is special */
+	if (town_num == 1)
+	{ 
+		/* the first town must have stairs - so use a low pop */
+		pop = 32 + 128;
+		
+		/* Medium magic */
+		magic = 150;
+	}
+		
 	/* Wipe the list of allocated buildings */
 	(void)C_WIPE(build, MAX_CITY_BUILD, u16b);
 	(void)C_WIPE(build_list, (WILD_BLOCK_SIZE * WILD_BLOCK_SIZE), u16b);
-	
+
 	/* Add town */
 	strcpy(t_ptr->name, "town");
 	t_ptr->seed = randint0(0x10000000);
-	
+
 	t_ptr->type = 2;
 	t_ptr->x = x;
 	t_ptr->y = y;
 
 	t_ptr->pop = pop;
-	
+
 	/* Hack -- Use the "simple" RNG */
 	Rand_quick = TRUE;
 
 	/* Hack -- Induce consistant town layout */
 	Rand_value = t_ptr->seed;
-	
+
 	/* We don't have to save this in the town structure */
 	magic = randint0(256);
-	
+
 	/* Generate plasma factal */
 	clear_temp_block();
 	set_temp_corner_val(WILD_BLOCK_SIZE * 64);
 	set_temp_mid(WILD_BLOCK_SIZE * pop);
 	frac_block();
-	
+
 	/* Copy the temp block to the town block */
 	for (i = 0; i < WILD_BLOCK_SIZE + 1; i++)
 	{
 		for (j = 0; j < WILD_BLOCK_SIZE + 1; j++)
 		{
-			temp = temp_block[j][i];
-			
-			if (temp < WILD_BLOCK_SIZE * 128)
+			if (temp_block[j][i] < WILD_BLOCK_SIZE * 128)
 			{
 				/* Outside the town */
-				town_block[j][i] = 0;
-			}
-			else
-			{
-				town_block[j][i] = temp;
+				temp_block[j][i] = 0;
 			}
 		}
 	}
-	
-	/* Hack - save seed of rng */
-	rng_seed_save = Rand_value;
-	
-	/* 
-	 * Generate second fractal
-	 */
-	clear_temp_block();
-	set_temp_corner_val(WILD_BLOCK_SIZE * 64);
-	set_temp_mid(WILD_BLOCK_SIZE * law);
-	frac_block();
-	
-	/* Restore the old seed */
-	Rand_value = rng_seed_save;
-	
+
 	/* Find walls */
 	for (i = 0; i < WILD_BLOCK_SIZE; i++)
 	{
 		for (j = 0; j < WILD_BLOCK_SIZE; j++)
 		{
 			/* Is a "city block" */
-			if (town_block[j][i])
+			if (temp_block[j][i])
 			{
 				/* Scan around */
-				for (k = -1; k <= 1; k++)				
+				for (k = -1; k <= 1; k++)
 				{
-					for (l = -1; l <= 1; l++) 
+					for (l = -1; l <= 1; l++)
 					{
 						/* In bounds? */
 						if ((i + k >= 0) && (i + k < WILD_BLOCK_SIZE) &&
 							(j + l >= 0) && (j + l < WILD_BLOCK_SIZE))
 						{
 							/* Is it outside? */
-							if (!town_block[j + l][i + k])
+							if (!temp_block[j + l][i + k])
 							{
 								/* Make a wall */
-								town_block[j][i] = 1;
+								temp_block[j][i] = 1;
 							}
 						}
 						else
 						{
 							/* Make a wall */
-							town_block[j][i] = 1;
+							temp_block[j][i] = 1;
 						}
 					}
 				}
-
-				/* Count "buildable blocks" */				
-				if (town_block[j][i] != 1) count++;
 			}
 		}
 	}
-	
-		
+
+	/* 'Fill' the town with buildings */
+	count = fill_town_driver();
+
 	/* Too few squares??? */
 	if (count < 6) return (FALSE);
 
@@ -317,21 +455,21 @@ static bool create_city(int x, int y, int town_num)
 		for (j = 0; j < WILD_BLOCK_SIZE; j++)
 		{
 			/* Is a "wall block" */
-			if (town_block[j][i] == 1)
+			if (temp_block[j][i] == 1)
 			{
 				city_block = FALSE;
-								
+
 				/* Scan around */
-				for (k = -1; k <= 1; k++)				
+				for (k = -1; k <= 1; k++)
 				{
-					for (l = -1; l <= 1; l++) 
+					for (l = -1; l <= 1; l++)
 					{
 						/* In bounds? */
 						if ((i + k >= 0) && (i + k < WILD_BLOCK_SIZE) &&
 							(j + l >= 0) && (j + l < WILD_BLOCK_SIZE))
 						{
 							/* Is it a city block? */
-							if (town_block[j + l][i + k] > 1)
+							if (temp_block[j + l][i + k] == 2)
 							{
 								/* We are next to a city */
 								city_block = TRUE;
@@ -339,28 +477,28 @@ static bool create_city(int x, int y, int town_num)
 						}
 					}
 				}
-				
+
 				/* No islands */
-				if (!city_block) town_block[j][i] = 0;
+				if (!city_block) temp_block[j][i] = 0;
 			}
 		}
 	}
-	
+
 	/* Clear the gates locations */
 	(void)C_WIPE(t_ptr->gates_x, MAX_GATES, byte);
-	(void)C_WIPE(t_ptr->gates_y, MAX_GATES, byte);	
+	(void)C_WIPE(t_ptr->gates_y, MAX_GATES, byte);
 	(void)C_WIPE(gate_num, MAX_GATES, byte);
-	
-	
+
+
 	/* Initialise min and max values */
 	gate_value[0] = 0;
 	gate_value[1] = 255;
 	gate_value[2] = 0;
 	gate_value[3] = 255;
-	
+
 	/* Hack - save seed of rng */
 	rng_seed_save = Rand_value;
-	
+
 	/*
 	 * Link wilderness to the new city
 	 * and find position of town gates.
@@ -370,7 +508,7 @@ static bool create_city(int x, int y, int town_num)
 		for (j = 0; j < WILD_BLOCK_SIZE; j++)
 		{
 			/* Is it a city block? */
-			if (town_block[j][i])
+			if (temp_block[j][i])
 			{
 				w_ptr =	&wild[y + j / 2][x + i / 2].trans;
 
@@ -379,10 +517,10 @@ static bool create_city(int x, int y, int town_num)
 				 * Note: only 255 towns can be stored currently.
 				 */
 				w_ptr->town = (byte)town_num;
-				
+
 				/* Hack - make a flat area around the town */
 				w_ptr->info |= WILD_INFO_ROAD;
-				
+
 				/* Right gate */
 				if (gate_value[0] < i)
 				{
@@ -392,7 +530,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[0] = i;
 					t_ptr->gates_y[0] = j;
 				}
-				else if ((gate_value[0] == i) && (randint0(gate_num[0]) == 0))
+				else if ((gate_value[0] == i) && one_in_(gate_num[0]))
 				{
 					/* save it */
 					gate_value[0] = i;
@@ -400,7 +538,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[0] = i;
 					t_ptr->gates_y[0] = j;
 				}
-				
+
 				/* Left gate */
 				if (gate_value[1] > i)
 				{
@@ -410,7 +548,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[1] = i;
 					t_ptr->gates_y[1] = j;
 				}
-				else if ((gate_value[1] == i) && (randint0(gate_num[1]) == 0))
+				else if ((gate_value[1] == i) && one_in_(gate_num[1]))
 				{
 					/* save it */
 					gate_value[1] = i;
@@ -418,7 +556,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[1] = i;
 					t_ptr->gates_y[1] = j;
 				}
-				
+
 				/* Bottom gate */
 				if (gate_value[2] < j)
 				{
@@ -428,7 +566,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[2] = i;
 					t_ptr->gates_y[2] = j;
 				}
-				else if ((gate_value[2] == j) && (randint0(gate_num[2]) == 0))
+				else if ((gate_value[2] == j) && one_in_(gate_num[2]))
 				{
 					/* save it */
 					gate_value[2] = j;
@@ -436,7 +574,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[2] = i;
 					t_ptr->gates_y[2] = j;
 				}
-				
+
 				/* Top gate */
 				if (gate_value[3] > j)
 				{
@@ -446,7 +584,7 @@ static bool create_city(int x, int y, int town_num)
 					t_ptr->gates_x[3] = i;
 					t_ptr->gates_y[3] = j;
 				}
-				else if ((gate_value[3] == j) && (randint0(gate_num[3]) == 0))
+				else if ((gate_value[3] == j) && one_in_(gate_num[3]))
 				{
 					/* save it */
 					gate_value[3] = j;
@@ -457,66 +595,64 @@ static bool create_city(int x, int y, int town_num)
 			}
 		}
 	}
-		
+
+	/*
+	 * Generate second fractal
+	 */
+	clear_temp_block();
+	set_temp_corner_val(WILD_BLOCK_SIZE * 64);
+	set_temp_mid(WILD_BLOCK_SIZE * law);
+	frac_block();
+
 	/* Restore the old seed */
 	Rand_value = rng_seed_save;
-	
+
 	/* Save the total number of buildings */
 	build_tot = count;
-	
+
 	/* Scan blocks in a random order */
 	while (count)
 	{
-		/* Pick a square */		
-		i = randint0(WILD_BLOCK_SIZE);
-		j = randint0(WILD_BLOCK_SIZE);
-
-		/* Find some room for a building */
-		while (town_block[j][i] <= 1)
-		{
-			/* Scan across town_block */
-			i++;
-
-			if (i == WILD_BLOCK_SIZE)
-			{
-				/* New line */
-				i = 0;
-				j++;
-
-				if (j == WILD_BLOCK_SIZE)
-				{
-					/* Restart from the begining */
-					j = 0;
-				}
-			}
-		}
+		/* Pick a square */
+		i = randint0(count);
 
 		/* Get parameters for the 8x8 section the building is on */
-		pop = town_block[j][i] / WILD_BLOCK_SIZE;
-		law = temp_block[j][i] / WILD_BLOCK_SIZE;
+		pop = build_pop[i];
+		law = temp_block[build_y[i]][build_x[i]] / WILD_BLOCK_SIZE;
 
-		/* 
+		/*
 		 * "place" building, and then record in the
 		 * list of allocated buildings.
 		 */
 		building = select_building(pop, magic, law, build, build_tot);
-		
+
 		/* Count number of this type */
 		build[building]++;
-		
+
 		/* Record list of created buildings */
 		build_list[build_num++] = building;
-		
-		/* Decrement free space in city */
-		count--;
-		
-		town_block[j][i] = 0;
+
+		/*
+		 * Decrement free space in city
+		 * Note deliberate use of count-- in initialiser
+		 */
+		for (count--; i < count; i++)
+		{
+			/* Shift unallocated buildings down */
+			build_pop[i] = build_pop[i + 1];
+			build_x[i] = build_x[i + 1];
+			build_y[i] = build_y[i + 1];
+		}
 	}
-	
+
 	/*
 	 * Generate store and building data structures
+	 *
+	 * We need to do this second, because we need to
+	 * know exactly how many stores we have - and realloc
+	 * is silly, unless you need to use it.
 	 */
-	
+
 	/* Allocate the stores */
 	C_MAKE(t_ptr->store, build_num, store_type);
 	t_ptr->numstores = build_num;
@@ -525,13 +661,13 @@ static bool create_city(int x, int y, int town_num)
 	for (i = 0; i < build_num; i++)
 	{
 		building = build_list[i];
-		
+
 		if (build_is_store(building))
 		{
 			/* Initialise the store */
 			store_init(town_num, i, building);
 		}
-		else if (build_is_general(building))	
+		else if (build_is_general(building))
 		{
 			/* Initialise general feature */
 			general_init(town_num, i, building);
@@ -549,44 +685,109 @@ static bool create_city(int x, int y, int town_num)
 
 
 /*
+ * Look to see if a wilderness block is able to have
+ * a town overlayed on top.
+ */
+static bool town_blank(int x, int y, int xsize, int ysize, int town_count)
+{
+	int i, j;
+	wild_gen2_type *w_ptr;
+
+	/* Hack - Population check */
+	if (randint0(256) > wild[y][x].trans.pop_map) return (FALSE);
+
+	for (i = x - 1; i < x + xsize + 2; i++)
+	{
+		for (j = y - 1; j < y + ysize + 2; j++)
+		{
+			/* Hack - Not next to boundary */
+			if ((i <= 0) || (i >= max_wild - 1) ||
+			    (j <= 0) || (j >= max_wild - 1))
+			{
+				return (FALSE);
+			}
+
+			w_ptr = &wild[j][i].trans;
+
+			/* No town already */
+			if (w_ptr->town) return (FALSE);
+
+			/* No water or lava or acid */
+			if (w_ptr->info & (WILD_INFO_WATER | WILD_INFO_LAVA | WILD_INFO_ACID))
+				 return (FALSE);
+
+			/* No Ocean */
+			if (w_ptr->hgt_map < (256 / SEA_FRACTION)) return (FALSE);
+		}
+	}
+
+
+	/* Look to see if another town is too close */
+	for (i = 1; i < town_count; i++)
+	{
+		if (distance(town[i].x, town[i].y, x, y) < TOWN_MIN_DIST)
+		{
+			/* Too close? */
+			return (FALSE);
+		}
+	}
+
+	/* Ok then */
+	return (TRUE);
+}
+
+/*
  * Initialise the town structures
  *
  * We have cities now...
  */
-static void init_towns(void)
+static void init_towns(int xx, int yy)
 {
 	int x, y, i;
-	
+	bool first_try = TRUE;
+
 	wild_gen2_type *w_ptr;
-	
+
 	/* Variables to pick "easiest" town. */
 	u16b best_town = 0, town_value = 0;
-	
+
 	/* No towns yet */
 	town_count = 1;
-	
+
 	/*
 	 * Try to add max_towns towns.
 	 */
 	while (town_count < max_towns)
 	{
-		/* Get random position */
-		x = randint0(max_wild);
-		y = randint0(max_wild);
-	
+		if (first_try)
+		{
+			/* Try the "easiest" spot in the wilderness */
+			x = xx;
+			y = yy;
+			
+			/* Only try once here */
+			first_try = FALSE;
+		}
+		else
+		{
+			/* Get a random position */
+			x = randint0(max_wild);
+			y = randint0(max_wild);
+		}
+		
 		/*
 		 * See if a city will fit.
 		 * (Need a 8x8 block free.)
 		 */
-		if (!town_blank(x, y, 8, 8)) continue;
-	
+		if (!town_blank(x, y, 8, 8, town_count)) continue;
+
 		/* Generate it */
 		if (create_city(x, y, town_count))
 		{
 			w_ptr = &wild[y][x].trans;
-			
+
 			/* Select easiest town */
-			if ((w_ptr->law_map + w_ptr->pop_map) > town_value)
+			if (w_ptr->law_map > town_value)
 			{
 				/* Check to see if the town has stairs */
 				for (i = 0; i < town[town_count].numstores; i++)
@@ -594,29 +795,43 @@ static void init_towns(void)
 					if (town[town_count].store[i].type == BUILD_STAIRS)
 					{
 						/* Save this town */
-						town_value = w_ptr->law_map + w_ptr->pop_map;
+						town_value = w_ptr->law_map;
 						best_town = town_count;
-						
+
 						/* Done */
 						break;
 					}
 				}
 			}
-			
+
 			/* Increment number of towns */
 			town_count++;
 		}
 	}
-			
+	
+	/* Hack - add a supplies store to the starting town */
+	for (i = 0; i < town[best_town].numstores; i++)
+	{
+		/* We need to have stairs */
+		if (town[best_town].store[i].type == BUILD_STAIRS) continue;
+
+		/* Hack - make a supplies store */
+		store_init(best_town, i, BUILD_SUPPLIES0);
+
+		break;
+	}
+
 	/* Build starting city / town */
 	draw_city(best_town);
-	
+
 	place_player_start(&p_ptr->wilderness_x, &p_ptr->wilderness_y, best_town);
 }
 
 
-/* Set wilderness stats depending on town type */
-void set_mon_wild_values(byte town_type, wild_done_type *w_ptr)
+/*
+ * Set wilderness stats depending on town type
+ */
+static void set_mon_wild_values(byte town_type, wild_done_type *w_ptr)
 {
 	/* This function is very rudimentary at the moment */
 
@@ -741,7 +956,8 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 		/* Access Node */
 		tree_ptr = &wild_choice_tree[node];
 
-		/* If are near end - look at leaves of tree
+		/*
+		 * If are near end - look at leaves of tree
 		 *
 		 * (cutoff == 0) is used as a flag since it doesn't
 		 * split the possibility tree in any useful way.
@@ -769,7 +985,7 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 			 */
 			switch(tree_ptr->info & 3)
 			{
-				case 1:
+				case DT_HGT:
 				{
 					/* Look at height */
 					if (tree_ptr->cutoff >= hgt)
@@ -783,7 +999,7 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 
 					break;
 				}
-				case 2:
+				case DT_POP:
 				{
 					/* Look at population */
 					if (tree_ptr->cutoff >= pop)
@@ -797,7 +1013,7 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 
 					break;
 				}
-				case 3:
+				case DT_LAW:
 				{
 					/* Look at lawfulness */
 					if (tree_ptr->cutoff >= law)
@@ -827,7 +1043,7 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 			/* Go "left" */
 
 			/* See if references leaf node */
-			if (tree_ptr->info & 4)
+			if (tree_ptr->info & DT_LEFT)
 			{
 				/* If the bit is set - leaf */
 				return (tree_ptr->ptrnode1);
@@ -843,7 +1059,7 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 			/* Go "right" */
 
 			/* See if references leaf node */
-			if (tree_ptr->info & 8)
+			if (tree_ptr->info & DT_RIGHT)
 			{
 				/* If the bit is set - leaf */
 				return (tree_ptr->ptrnode2);
@@ -861,7 +1077,9 @@ static u16b get_gen_type(byte hgt, byte pop, byte law)
 }
 
 
-/* The number of allocated nodes in the decision tree */
+/*
+ * The number of allocated nodes in the decision tree
+ */
 static u16b d_tree_count;
 
 
@@ -911,7 +1129,7 @@ static u16b create_node(u16b node, bool branch)
 		tree_ptr->ptrnode1 = new_node;
 
 		/* Link is not to a leaf */
-		tree_ptr->info &= ~4;
+		tree_ptr->info &= ~DT_LEFT;
 	}
 	else
 	{
@@ -919,7 +1137,7 @@ static u16b create_node(u16b node, bool branch)
 		tree_ptr->ptrnode2 = new_node;
 
 		/* Link is not to a leaf */
-		tree_ptr->info &= ~8;
+		tree_ptr->info &= ~DT_RIGHT;
 	}
 
 	/* Increase count of allocated nodes */
@@ -995,7 +1213,7 @@ static u16b add_node_chance(u16b type, u16b node, bool branch)
 		}
 
 		/* Get left leaf status */
-		is_tree = (wild_choice_tree[old_node].info & 4);
+		is_tree = (wild_choice_tree[old_node].info & DT_LEFT);
 	}
 	else
 	{
@@ -1012,7 +1230,7 @@ static u16b add_node_chance(u16b type, u16b node, bool branch)
 		}
 
 		/* Get right leaf status */
-		is_tree = (wild_choice_tree[old_node].info & 8);
+		is_tree = (wild_choice_tree[old_node].info & DT_RIGHT);
 	}
 
 	/* Insert new node */
@@ -1042,7 +1260,7 @@ static u16b add_node_chance(u16b type, u16b node, bool branch)
 	{
 		/* Set "info" bit-flag */
 		/* Only new node is a pointer to gen. type */
-		tree_ptr->info = 8;
+		tree_ptr->info = DT_RIGHT;
 
 		/* Calculate the chance fields */
 		tree_ptr->chance1 = wild_choice_tree[old_node].chance1 +
@@ -1054,7 +1272,7 @@ static u16b add_node_chance(u16b type, u16b node, bool branch)
 	{
 		/* Set "info" bit-flag */
 		/* Both links are to wild. gen. types. */
-		tree_ptr->info = 8 + 4;
+		tree_ptr->info = DT_LEFT | DT_RIGHT;
 
 		/* Calculate the chance fields */
 		tree_ptr->chance1 = wild_gen_data[old_node].chance;
@@ -1079,19 +1297,19 @@ static u16b add_node_chance(u16b type, u16b node, bool branch)
 static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 {
 	/* This function assumes that the "leaves" are of this form:
-	*
-	*StartNode
-	* /  \
-	*x  Node
-	*    / \
-	* type Node
-	*       / \
-	*    type Node
-	*          / \
-	*       type type
-	*
-	* (Where one pointer connects to a node, and one to a wild. gen. type)
-	*/
+	 *
+	 *StartNode
+	 * /  \
+	 *x  Node
+	 *    / \
+	 * type Node
+	 *       / \
+	 *    type Node
+	 *          / \
+	 *       type type
+	 *
+	 * (Where one pointer connects to a node, and one to a wild. gen. type)
+	 */
 
 	/*
 	 * The complexity of this function is due to the large number of
@@ -1111,7 +1329,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 	/* work out what has to be copied. */
 	if (branch1)
 	{
-		if (tree_ptr1->info & 4)
+		if (tree_ptr1->info & DT_LEFT)
 		{
 			/* need to copy tree of nodes */
 
@@ -1137,14 +1355,14 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			tree_ptr2->ptrnode2 = tree_ptr1->ptrnode2;
 
 			/* Recurse along branches to this node */
-			if (!(tree_ptr2->info & 4))
+			if (!(tree_ptr2->info & DT_LEFT))
 			{
 				/* Recurse along "left" branch */
 				if (copy_branch(temp_node, TRUE, new_node, TRUE) == 0)
 					return (0);
 			}
 
-			if (!(tree_ptr2->info & 8))
+			if (!(tree_ptr2->info & DT_RIGHT))
 			{
 				/* Recurse along "right" branch */
 				if (copy_branch(temp_node, TRUE, new_node, TRUE) == 0)
@@ -1163,7 +1381,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			if (branch2)
 			{
 				/* terminal branch */
-				tree_ptr2->info |= 4;
+				tree_ptr2->info |= DT_LEFT;
 
 				/* Copy information */
 				tree_ptr2->ptrnode1 = tree_ptr1->ptrnode1;
@@ -1172,7 +1390,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			else
 			{
 				/* terminal branch */
-				tree_ptr2->info |= 8;
+				tree_ptr2->info |= DT_RIGHT;
 
 				/* Copy information */
 				tree_ptr2->ptrnode2 = tree_ptr1->ptrnode1;
@@ -1185,7 +1403,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 	}
 	else
 	{
-		if (tree_ptr1->info & 8)
+		if (tree_ptr1->info & DT_RIGHT)
 		{
 			/* need to copy tree of nodes */
 
@@ -1211,14 +1429,14 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			tree_ptr2->ptrnode2 = tree_ptr1->ptrnode2;
 
 			/* Recurse along branches to this node */
-			if (!(tree_ptr2->info & 4))
+			if (!(tree_ptr2->info & DT_LEFT))
 			{
 				/* Recurse along "left" branch */
 				if (copy_branch(temp_node, TRUE, new_node, TRUE) == 0)
 					return (0);
 			}
 
-			if (!(tree_ptr2->info & 8))
+			if (!(tree_ptr2->info & DT_RIGHT))
 			{
 				/* Recurse along "right" branch */
 				if (copy_branch(temp_node, TRUE, new_node, TRUE) == 0)
@@ -1237,7 +1455,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			if (branch2)
 			{
 				/* terminal branch */
-				tree_ptr2->info |= 4;
+				tree_ptr2->info |= DT_LEFT;
 
 				/* Copy information */
 				tree_ptr2->ptrnode1 = tree_ptr1->ptrnode2;
@@ -1246,7 +1464,7 @@ static u16b copy_branch(u16b node1, bool branch1, u16b node2, bool branch2)
 			else
 			{
 				/* terminal branch */
-				tree_ptr2->info |= 8;
+				tree_ptr2->info |= DT_RIGHT;
 
 				/* Copy information */
 				tree_ptr2->ptrnode2 = tree_ptr1->ptrnode2;
@@ -1296,9 +1514,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode1 = type1;
 
 		/* Cutoff = hgt , ptrnode1 = wild. gen. type. */
-		tree_ptr->info = 1 + 4;
+		tree_ptr->info = DT_HGT | DT_LEFT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1322,9 +1540,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode2 = type1;
 
 		/* Cutoff = hgt , ptrnode2 = wild. gen. type. */
-		tree_ptr->info = 1 + 8;
+		tree_ptr->info = DT_HGT | DT_RIGHT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1348,9 +1566,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode1 = type1;
 
 		/* Cutoff = pop , ptrnode1 = wild. gen. type. */
-		tree_ptr->info = 2 + 4;
+		tree_ptr->info = DT_POP | DT_LEFT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1374,9 +1592,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode2 = type1;
 
 		/* Cutoff = pop , ptrnode2 = wild. gen. type. */
-		tree_ptr->info = 2 + 8;
+		tree_ptr->info = DT_POP | DT_RIGHT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1400,9 +1618,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode1 = type1;
 
 		/* Cutoff = law , ptrnode1 = wild. gen. type. */
-		tree_ptr->info = 3 + 4;
+		tree_ptr->info = DT_LAW | DT_LEFT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1426,9 +1644,9 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 		tree_ptr->ptrnode2 = type1;
 
 		/* Cutoff = law , ptrnode2 = wild. gen. type. */
-		tree_ptr->info = 3 + 8;
+		tree_ptr->info = DT_LAW | DT_RIGHT;
 
-		/* Wipe chance values  (this probably isn't needed) */
+		/* Wipe chance values (this probably isn't needed) */
 		tree_ptr->chance1 = 0;
 		tree_ptr->chance2 = 0;
 
@@ -1473,7 +1691,7 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 			tree_ptr->ptrnode2 = type2;
 
 			/* right branch is to a wild. gen. type - not a node. */
-			tree_ptr->info |= 8;
+			tree_ptr->info |= DT_RIGHT;
 
 			/* Done */
 			return (node);
@@ -1489,7 +1707,7 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 			tree_ptr->ptrnode1 = type2;
 
 			/* left branch is to a wild. gen. type - not a node. */
-			tree_ptr->info |= 4;
+			tree_ptr->info |= DT_LEFT;
 
 			/* Done */
 			return (node);
@@ -1511,7 +1729,7 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 	tree_ptr->ptrnode2 = type2;
 
 	/* Set info flag to show both branches are "leaves"*/
-	tree_ptr->info = 8 + 4;
+	tree_ptr->info = DT_LEFT | DT_RIGHT;
 
 	/* Look up chances and add to node. */
 	tree_ptr->chance1 = wild_gen_data[type1].chance;
@@ -1523,7 +1741,7 @@ static u16b add_node_inside(u16b node, u16b type1, wild_bound_box_type *bound1,
 
 
 /*
- * This routine compares two bounding boxes 
+ * This routine compares two bounding boxes
  * and returns true if they are the same.
  */
 static bool compare_bounds(wild_bound_box_type *bound1, wild_bound_box_type *bound2)
@@ -1587,7 +1805,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->hgtmin;
 
 		/* Cutoff = hgt */
-		tree_ptr->info = 1;
+		tree_ptr->info = DT_HGT;
 
 		/* work out branch to follow */
 		branch = FALSE;
@@ -1621,7 +1839,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->hgtmax;
 
 		/* Cutoff = hgt */
-		tree_ptr->info = 1;
+		tree_ptr->info = DT_HGT;
 
 		/* work out branch to follow */
 		branch = TRUE;
@@ -1655,7 +1873,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->popmin;
 
 		/* Cutoff = pop */
-		tree_ptr->info = 2;
+		tree_ptr->info = DT_POP;
 
 		/* work out branch to follow */
 		branch = FALSE;
@@ -1689,7 +1907,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->popmax;
 
 		/* Cutoff = pop */
-		tree_ptr->info = 2;
+		tree_ptr->info = DT_POP;
 
 		/* work out branch to follow */
 		branch = TRUE;
@@ -1723,7 +1941,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->lawmin;
 
 		/* Cutoff = law */
-		tree_ptr->info = 3;
+		tree_ptr->info = DT_LAW;
 
 		/* work out branch to follow */
 		branch = FALSE;
@@ -1757,7 +1975,7 @@ static u16b inside_leaf(u16b node, u16b type, wild_bound_box_type *bound1,
 		tree_ptr->cutoff = bound2->lawmax;
 
 		/* Cutoff = law */
-		tree_ptr->info = 3;
+		tree_ptr->info = DT_LAW;
 
 		/* work out branch to follow */
 		branch = TRUE;
@@ -1816,7 +2034,7 @@ static u16b add_node(wild_bound_box_type *bound,
 
 	wild_choice_tree_type	*tree_ptr;
 
-	
+
 	/* Scan tree until hit a leaf or split required region */
 
 	/* Use a while loop instead of recursion to follow tree */
@@ -1843,7 +2061,7 @@ static u16b add_node(wild_bound_box_type *bound,
 			 */
 			switch(tree_ptr->info & 3)
 			{
-				case 1:
+				case DT_HGT:
 				{
 					/* Look at height */
 					if (tree_ptr->cutoff >= bound->hgtmax)
@@ -1885,7 +2103,7 @@ static u16b add_node(wild_bound_box_type *bound,
 					}
 					break;
 				}
-				case 2:
+				case DT_POP:
 				{
 					/* Look at population */
 					if (tree_ptr->cutoff >= bound->popmax)
@@ -1927,7 +2145,7 @@ static u16b add_node(wild_bound_box_type *bound,
 					}
 					break;
 				}
-				case 3:
+				case DT_LAW:
 				{
 					/* Look at lawfulness */
 					if (tree_ptr->cutoff >= bound->lawmax)
@@ -1987,7 +2205,7 @@ static u16b add_node(wild_bound_box_type *bound,
 			/* Go "left" */
 
 			/* See if references leaf node */
-			if (tree_ptr->info & 4)
+			if (tree_ptr->info & DT_LEFT)
 			{
 				/* Hit leaf node */
 
@@ -2022,7 +2240,7 @@ static u16b add_node(wild_bound_box_type *bound,
 			/* Go "right" */
 
 			/* See if references leaf node */
-			if (tree_ptr->info & 8)
+			if (tree_ptr->info & DT_RIGHT)
 			{
 				/* Hit leaf node */
 
@@ -2055,10 +2273,10 @@ static u16b add_node(wild_bound_box_type *bound,
 	}
 }
 
+
 /*
  * Initialise the decision tree with the first wilderness generation type.
  */
-
 u16b init_choice_tree(wild_bound_box_type *bound, u16b type)
 {
 	wild_bound_box_type start_bounds;
@@ -2110,7 +2328,9 @@ u16b add_node_tree_root(wild_bound_box_type *bound, u16b type)
 }
 
 
-/* Testing code - remove later. */
+/*
+ * Testing code - remove later.
+ */
 void test_decision_tree(void)
 {
 	byte hgt, pop, law;
@@ -2223,6 +2443,9 @@ static void test_wild_data(void)
  */
 static bool is_road_town(u16b town_num)
 {
+	/* Hack - ignore the parameter for now */
+	(void) town_num;
+
 	/* Hack - change this when we implement other things */
 
 	return (TRUE);
@@ -2250,7 +2473,7 @@ static void road_link(u16b x1, u16b y1, u16b x2, u16b y2)
 		if (dy != 0)
 		{
 			/* perturbation perpendicular to path */
-			changex = randint1(abs(dy)) - abs(dy) / 2;
+			changex = randint1(ABS(dy)) - ABS(dy) / 2;
 		}
 		else
 		{
@@ -2260,7 +2483,7 @@ static void road_link(u16b x1, u16b y1, u16b x2, u16b y2)
 		if (dx != 0)
 		{
 			/* perturbation perpendicular to path */
-			changey = randint1(abs(dx)) - abs(dx) / 2;
+			changey = randint1(ABS(dx)) - ABS(dx) / 2;
 		}
 		else
 		{
@@ -2326,13 +2549,13 @@ static void road_link(u16b x1, u16b y1, u16b x2, u16b y2)
 static void road_connect(u16b *x, u16b *y, u16b town_num)
 {
 	town_type *t_ptr = &town[town_num];
-	
+
 	/* Big distance */
 	int dist = max_wild * 2;
 	int cdist, k;
-	
+
 	u16b x1 = *x, y1 = *y;
-	
+
 	/* Check town type */
 	if (t_ptr->type == 2)
 	{
@@ -2341,35 +2564,35 @@ static void road_connect(u16b *x, u16b *y, u16b town_num)
 			/* Get distance from gate to target square */
 			cdist = distance(x1, y1, t_ptr->x + t_ptr->gates_x[k] / 2,
 				 t_ptr->y + t_ptr->gates_y[k] / 2);
-			
+
 			if (cdist < dist)
 			{
 				/* save minimal path */
 				dist = cdist;
-				
+
 				switch (k)
-				{			
+				{
 					case 0:
 					{
 						*x = t_ptr->x + (t_ptr->gates_x[0] + 1) / 2;
-						*y = t_ptr->y + t_ptr->gates_y[0] / 2;				
+						*y = t_ptr->y + t_ptr->gates_y[0] / 2;
 						break;
 					}
-					
+
 					case 1:
 					{
 						*x = t_ptr->x + (t_ptr->gates_x[1] - 1) / 2;
 						*y = t_ptr->y + t_ptr->gates_y[1] / 2;
 						break;
 					}
-					
+
 					case 2:
 					{
 						*x = t_ptr->x + t_ptr->gates_x[2] / 2;
 						*y = t_ptr->y + (t_ptr->gates_y[2] + 1) / 2;
 						break;
 					}
-					
+
 					case 3:
 					{
 						*x = t_ptr->x + t_ptr->gates_x[3] / 2;
@@ -2766,7 +2989,7 @@ static void link_river(int x1, int x2, int y1, int y2)
 		if (dy != 0)
 		{
 			/* perturbation perpendicular to path */
-			changex = randint1(abs(dy)) - abs(dy) / 2;
+			changex = randint1(ABS(dy)) - ABS(dy) / 2;
 		}
 		else
 		{
@@ -2776,7 +2999,7 @@ static void link_river(int x1, int x2, int y1, int y2)
 		if (dx != 0)
 		{
 			/* perturbation perpendicular to path */
-			changey = randint1(abs(dx)) - abs(dx) / 2;
+			changey = randint1(ABS(dx)) - ABS(dx) / 2;
 		}
 		else
 		{
@@ -2823,7 +3046,7 @@ static void create_rivers(void)
 	int i, cur_posn, high_posn, dh, river_start;
 	int cx, cy, ch;
 	int r1, r2;
-	
+
 	long val, h_val;
 
 	/* Number of river starting points. */
@@ -2838,12 +3061,12 @@ static void create_rivers(void)
 		/* Evenly spread out the points */
 		r1 = ((i % RIVER_NUM) * max_wild) / RIVER_NUM;
 		r2 = r1 + (max_wild / RIVER_NUM);
-		
+
 		temp_y[i] = (s16b)rand_range(r1, r2);
-		
+
 		r1 = ((i / RIVER_NUM) * max_wild) / RIVER_NUM;;
 		r2 = r1 + (max_wild / RIVER_NUM);
-		
+
 		temp_x[i] = (s16b)rand_range(r1, r2);
 	}
 
@@ -2957,9 +3180,9 @@ static void create_rivers(void)
  * Note the logic used to see that lava and acid lakes do not
  * overlap rivers, and that all lakes are above sea level.
  */
-void create_lakes(void)
+static void create_lakes(void)
 {
-	int count, i, j, x ,y;
+	int count, i, j, x, y;
 
 	wild_gen2_type *w_ptr;
 
@@ -3086,7 +3309,9 @@ void create_lakes(void)
  * (Done for a less "griddy" result.)
  */
 
-/* this routine probably should be an inline function or a macro. */
+/*
+ * this routine probably should be an inline function or a macro.
+ */
 static void store_hgtmap(int x, int y, int val)
 {
 	/* bounds checking */
@@ -3176,7 +3401,7 @@ static void create_hgt_map(void)
 						/* If greater than 'grid' level then is random */
 						store_hgtmap(ii, jj, randint1(max_wild * 16));
 					}
-			   		else
+					else
 					{
 						/* Average of left and right points +random bit */
 						store_hgtmap(ii, jj,
@@ -3193,7 +3418,7 @@ static void create_hgt_map(void)
 		for (j = hstep; j <= size - hstep; j += lstep)
 		{
 			for (i = 0; i <= size; i += lstep)
-		   	{
+			{
 				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
@@ -3206,7 +3431,7 @@ static void create_hgt_map(void)
 						/* If greater than 'grid' level then is random */
 						store_hgtmap(ii, jj, randint1(max_wild * 16));
 					}
-		   			else
+					else
 					{
 						/* Average of up and down points +random bit */
 						store_hgtmap(ii, jj,
@@ -3223,7 +3448,7 @@ static void create_hgt_map(void)
 		{
 			for (j = hstep; j <= size - hstep; j += lstep)
 			{
-			   	/* cache values of i,j / 16 */
+				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
 
@@ -3235,7 +3460,7 @@ static void create_hgt_map(void)
 						/* If greater than 'grid' level then is random */
 						store_hgtmap(ii, jj, randint1(max_wild * 16));
 					}
-		   			else
+					else
 					{
 						/* average over all four corners + scale by 181 to
 						 * reduce the effect of the square grid on the shape of the fractal */
@@ -3253,7 +3478,9 @@ static void create_hgt_map(void)
 }
 
 
-/* this routine probably should be an inline function or a macro. */
+/*
+ * this routine probably should be an inline function or a macro.
+ */
 static void store_popmap(int x, int y, int val, u16b sea)
 {
 	/* bounds checking */
@@ -3341,7 +3568,7 @@ static void create_pop_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_popmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-			   		else
+					else
 					{
 						/* Average of left and right points +random bit */
 						store_popmap(ii, jj,
@@ -3358,7 +3585,7 @@ static void create_pop_map(u16b sea)
 		for (j = hstep; j <= size - hstep; j += lstep)
 		{
 			for (i = 0; i <= size; i += lstep)
-		   	{
+			{
 				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
@@ -3371,7 +3598,7 @@ static void create_pop_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_popmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-		   			else
+					else
 					{
 						/* Average of up and down points +random bit */
 						store_popmap(ii, jj,
@@ -3388,7 +3615,7 @@ static void create_pop_map(u16b sea)
 		{
 			for (j = hstep; j <= size - hstep; j += lstep)
 			{
-			   	/* cache values of i,j / 16 */
+				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
 
@@ -3400,7 +3627,7 @@ static void create_pop_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_popmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-		   			else
+					else
 					{
 						/* average over all four corners + scale by 181 to
 						 * reduce the effect of the square grid on the shape of the fractal */
@@ -3418,7 +3645,9 @@ static void create_pop_map(u16b sea)
 }
 
 
-/* this routine probably should be an inline function or a macro. */
+/*
+ * this routine probably should be an inline function or a macro.
+ */
 static void store_lawmap(int x, int y, int val, u16b sea)
 {
 	/* bounds checking */
@@ -3510,7 +3739,7 @@ static void create_law_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_lawmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-			   		else
+					else
 					{
 						/* Average of left and right points +random bit */
 						store_lawmap(ii, jj,
@@ -3526,7 +3755,7 @@ static void create_law_map(u16b sea)
 		for (j = hstep; j <= size - hstep; j += lstep)
 		{
 			for (i = 0; i <= size; i += lstep)
-		   	{
+			{
 				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
@@ -3539,7 +3768,7 @@ static void create_law_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_lawmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-		   			else
+					else
 					{
 						/* Average of up and down points +random bit */
 						store_lawmap(ii, jj,
@@ -3556,7 +3785,7 @@ static void create_law_map(u16b sea)
 		{
 			for (j = hstep; j <= size - hstep; j += lstep)
 			{
-			   	/* cache values of i,j / 16 */
+				/* cache values of i,j / 16 */
 				ii = i >> 4;
 				jj = j >> 4;
 
@@ -3568,7 +3797,7 @@ static void create_law_map(u16b sea)
 						/* If greater than 'grid' level then is random */
 						store_lawmap(ii, jj, randint1(max_wild * 16), sea);
 					}
-		   			else
+					else
 					{
 						/* average over all four corners + scale by 181 to
 						 * reduce the effect of the square grid on the shape of the fractal */
@@ -3652,16 +3881,13 @@ static void wild_done(void)
  *
  * Finally towns are placed.
  *
- * Problem: The towns don't take into account the hpl of the wilderness
- * properly yet.  There may need to be another union to store the information
- * as the wildness is being made...
- *
  * This code is incomplete:
  * No specials yet.
  */
 void create_wilderness(void)
 {
-	int i, j;
+	int i, j, k;
+	int x, y;
 
 	u16b hgt_min, hgt_max, pop_min, pop_max, law_min, law_max;
 	byte sea_level;
@@ -3669,7 +3895,7 @@ void create_wilderness(void)
 	byte hgt, pop, law;
 	long hgt_scale, pop_scale, law_scale;
 
-	wild_tp_ptr w_ptr;
+	wild_type *w_ptr;
 
 
 	/* Test wilderness generation information */
@@ -3812,6 +4038,10 @@ void create_wilderness(void)
 
 	/* Rescale minimum. */
 	law_min *= 16;
+	
+	/* Best place in wilderness for starting town */
+	x = -1;
+	y = -1;
 
 	/* Fill wilderness with terrain */
 	for (i = 0; i < max_wild; i++)
@@ -3845,6 +4075,17 @@ void create_wilderness(void)
 
 			/* No info flags set yet */
 			w_ptr->trans.info = 0;
+
+			/* How good is this spot to put a town? */
+			if (w_ptr->trans.law_map < 20)
+			{
+				/* Only record the first such place */
+				if ((x == -1) && (y == -1))
+				{
+					x = i;
+					y = j;
+				}
+			}
 		}
 	}
 
@@ -3860,7 +4101,7 @@ void create_wilderness(void)
 	create_lakes();
 
 	/* Add towns + dungeons etc */
-	init_towns();
+	init_towns(x, y);
 
 	/* Connect the towns with roads */
 	create_roads();
@@ -3892,7 +4133,7 @@ void create_wilderness(void)
 				/* Ocean */
 				wild[j][i].done.wild = 65535 - hgt;
 
-				if (hgt > 512 / SEA_FRACTION)
+				if (hgt > 128 / SEA_FRACTION)
 				{
 					/* Set to be water boundary */
 					w_ptr->done.info = WILD_INFO_WATER;
@@ -3920,8 +4161,8 @@ void create_wilderness(void)
 			if (!town)
 			{
 				/* Toughness (level 0 - 64) */
-				w_ptr->done.mon_gen = ((256 - law) + (256 - pop)) / 4 ;
-				w_ptr->done.mon_gen = MAX(1, w_ptr->done.mon_gen - 10);
+				w_ptr->done.mon_gen = (256 - law) / 4;
+				w_ptr->done.mon_gen = MAX(1, w_ptr->done.mon_gen - 5);
 
 				/* No monsters (probability 0 - 16) */
 				w_ptr->done.mon_prob = pop / 16;
@@ -3934,6 +4175,37 @@ void create_wilderness(void)
 
 			/* Info flags */
 			w_ptr->done.info = info;
+		}
+	}
+
+	/* Create ocean boundaries (This might be very slow) */
+	for (i = 0; i < max_wild; i++)
+	{
+		for (j = 0; j < max_wild; j++)
+		{
+			if (wild[j][i].done.wild >= WILD_SEA)
+			{
+				for (k = 0; k < 8; k++)
+				{
+					x = i + ddx_ddd[k];
+					y = j + ddy_ddd[k];
+
+					/* Must be in bounds */
+					if ((x < 0) || (x >= max_wild) ||
+						 (y < 0) || (y >= max_wild))
+					{
+						continue;
+					}
+
+					/* Get wilderness grid */
+					w_ptr = &wild[y][x];
+
+					if (w_ptr->done.wild < WILD_SEA)
+					{
+						w_ptr->done.info |= WILD_INFO_WATER;
+					}
+				}
+			}
 		}
 	}
 

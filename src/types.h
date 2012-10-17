@@ -106,6 +106,26 @@ struct header
 	u32b	text_size;		/* Size of the "text" array in bytes */
 };
 
+/*
+ * Structure used to store information required for LOS
+ * calculatations.  The same data can be inverted to
+ * get the squares affected by a projection.  Those squares
+ * can be itterated over to get a 'flight path' for arrows
+ * and thrown items...
+ */
+ 
+typedef struct project_type project_type;
+
+struct project_type
+{
+	/* Offset of square */
+	byte x;
+	byte y;
+	
+	/* Index into array if this square is a wall */
+	byte slope;
+	byte square;
+};
 
 
 /*
@@ -125,6 +145,9 @@ struct feature_type
 
 	byte x_attr;		/* Desired feature attribute */
 	char x_char;		/* Desired feature character */
+	
+	byte w_attr;		/* Desired extra feature attribute */
+	char w_char;		/* Desired extra feature character */
 };
 
 
@@ -405,6 +428,8 @@ struct monster_race
 	u32b r_flags7;			/* Observed racial flags */
 	
 	obj_theme obj_drop;		/* Type of objects to drop when killed */
+
+	u16b r_see;				/* Number of monsters of this type visible */
 };
 
 
@@ -472,12 +497,8 @@ struct cave_type
 
 	s16b fld_idx;		/* Field in this grid */
 
-#ifdef MONSTER_FLOW
-
 	byte cost;		/* Hack -- cost of flowing */
 	byte when;		/* Hack -- when cost was computed */
-
-#endif /* MONSTER_FLOW */
 };
 
 
@@ -500,10 +521,6 @@ struct coord
  */
 
 typedef cave_type **blk_ptr;
-
-/* Hack - to get the C_MAKE to work in init2.c */
-
-typedef cave_type *cave_tp_ptr;
 
 
 /*
@@ -605,7 +622,6 @@ union wild_type
 	wild_done_type	done;
 };
 
-typedef wild_type *wild_tp_ptr;
 
 /*
  * An array of this structure is used to work out what wilderness type
@@ -652,8 +668,6 @@ struct wild_choice_tree_type
  * This type is used to describe a region in parameter space
  * for wilderness generation.
  */
-
-
 typedef struct wild_bound_box_type wild_bound_box_type;
 
 struct wild_bound_box_type
@@ -680,8 +694,7 @@ typedef struct wild_gen_data_type wild_gen_data_type;
 
 struct wild_gen_data_type
 {
-	byte	w_attr;		/* Default attribute for overhead map */
-	char	w_char;		/* Default character for overhead map */
+	byte	feat;		/* The feature to look like on the overhead map */
 
 	byte	gen_routine;	/* Generation routine number */
 
@@ -858,7 +871,7 @@ typedef struct field_type field_type;
  * 2) a pointer to a structure cast to void that contains the
  *	information the action needs to complete its job.
  */
-typedef void (*field_action_type)(s16b *field_ptr, void*);
+typedef void (*field_action_type)(s16b *field_ptr, vptr);
 
 
 
@@ -978,6 +991,20 @@ struct field_mon_test
 	monster_type *m_ptr; /* The monster */
 	bool do_move; /* Does the monster enter this grid? */
 };
+
+/*
+ * Structure used to pass to field action functions that
+ * test objects for given properties.
+ */
+typedef struct field_obj_test field_obj_test;
+
+struct field_obj_test
+{
+	object_type *o_ptr; /* The object */
+	bool result; /* Result of the test */
+};
+
+
 
 
 /*
@@ -1488,8 +1515,8 @@ struct player_type
 	s16b num_fire;		/* Number of shots */
 
 	byte ammo_mult;		/* Ammo multiplier */
-
 	byte ammo_tval;		/* Ammo variety */
+	byte bow_energy;	/* shooter speed */
 
 	s16b pspeed;		/* Current speed */
 
@@ -1502,6 +1529,13 @@ struct player_type
 	/* Options */
 	bool options[OPT_PLAYER];
 	bool birth[OPT_BIRTH];
+	
+	/* Extra player-specific flags */
+	bool skip_more;			/* Skip the --more-- prompt */
+	bool mon_fight;			/* Monster fighting indicator */
+	
+	u16b max_seen_r_idx;	/* Most powerful monster visible */
+	bool monk_armour_stat;	/* Status of monk armour */
 };
 
 
@@ -1608,10 +1642,7 @@ struct store_type
 
 	s32b last_visit;		/* Last visited on this turn */
 
-	s16b table_num;			/* Table -- Number of entries */
-	s16b table_size;		/* Table -- Total Size of Array */
-	s16b *table;			/* Table -- Legal item kinds */
-
+	byte max_stock;			/* Stock -- Max number of entries */
 	byte stock_num;			/* Stock -- Number of entries */
 	object_type *stock;		/* Stock -- Actual stock items */
 	
@@ -1619,49 +1650,7 @@ struct store_type
 	u16b y;					/* Location y coord. */
 };
 
-typedef store_type *store_ptr;
 
-
-/* Use the store type for owner, race, type etc. */
-#if 0
-
-/*
- * A structure to describe a building.
- * From Kamband
- */
-typedef struct building_type building_type;
-
-struct building_type
-{
-	char name[20];                  /* proprietor name */
-	char owner_name[20];            /* proprietor name */
-	char owner_race[20];            /* proprietor race */
-
-
-	/* 
-	 * I think this can all be "scriptified".
-	 *
-	 * No need for all the hacks.
-	 * This means that buildings and stores can share the same
-	 * data type.  The thing that interprets the data will be
-	 * different though.  This is naturally taken care of by
-	 * the fields code.
-	 */
-
-	char act_names[6][30];          /* action names */
-	s16b member_costs[6];           /* Costs for class members of building */
-	s16b other_costs[6];		    /* Costs for nonguild members */
-	char letters[6];                /* action letters */
-	s16b actions[6];                /* action codes */
-	s16b action_restr[6];           /* action restrictions */
-
-	s16b member_class[MAX_CLASS];   /* which classes are part of guild */
-	s16b member_race[MAX_RACES];    /* which classes are part of guild */
-	s16b member_realm[MAX_REALM+1]; /* which realms are part of guild */
-};
-
-
-#endif /* 0 */
 
 /*
  * A structure describing a town with
@@ -1697,16 +1686,6 @@ struct dun_type
 	cptr name;      /* The name of the dungeon */
 };
 
-/*
- * Sort-array element
- */
-typedef struct tag_type tag_type;
-
-struct tag_type
-{
-	int     tag;
-	void    *pointer;
-};
 
 typedef bool (*monster_hook_type)(int r_idx);
 
@@ -1757,3 +1736,30 @@ struct high_score
 
 	char how[32];		/* Method of death (string) */
 };
+
+/*
+ * Struct for mutations and racial powers
+ */
+
+typedef struct mutation_type mutation_type;
+
+struct mutation_type
+{
+	u32b which;			/* Actual mutation (mask) */
+
+	cptr desc_text;		/* Text describing mutation */
+	cptr gain_text;		/* Text displayed on gaining the mutation */
+	cptr lose_text;		/* Text displayed on losing the mutation */
+
+	char name[39];		/* Short description (activatable mutations) */
+	byte level;			/* Minimum level (activatable mutations) */
+	
+	int cost;			/* Mana/HP Cost (activatable mutations) */
+	int stat;			/* Stat dependency (activatable mutations) */
+	int diff;			/* Difficulty (activatable mutations) */
+	int chance;			/* Chance of occuring (random mutations) / 100 */
+	
+};
+
+
+

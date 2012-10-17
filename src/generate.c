@@ -221,13 +221,16 @@ static void alloc_object(int set, int typ, int num)
 			if (!cave_naked_grid(c_ptr)) continue;
 
 			/* Check for "room" */
-			room = (cave[y][x].info & CAVE_ROOM) ? TRUE : FALSE;
+			room = (c_ptr->info & CAVE_ROOM) ? TRUE : FALSE;
 
 			/* Require corridor? */
 			if ((set == ALLOC_SET_CORR) && room) continue;
 
 			/* Require room? */
 			if ((set == ALLOC_SET_ROOM) && !room) continue;
+			
+			/* Traps cannot be placed on 'icky' grids (rivers/lakes) */
+			if ((typ == ALLOC_TYP_TRAP) && (c_ptr->info & CAVE_ICKY)) continue;
 
 			/* Accept it */
 			break;
@@ -274,7 +277,7 @@ static void alloc_object(int set, int typ, int num)
 			{
 				/* Create invisible wall */
 				cave_set_feat(y, x, FEAT_FLOOR);
-				(void) place_field(y, x, FT_WALL_INVIS);
+				(void)place_field(y, x, FT_WALL_INVIS);
 				break;
 			}
 		}
@@ -424,7 +427,7 @@ static bool cave_gen(void)
 	dun_tun_jct = rand_range(DUN_TUN_JCT_MIN, DUN_TUN_JCT_MAX);
 
 	/* Empty arena levels */
-	if (ironman_empty_levels || (empty_levels && (randint1(EMPTY_LEVEL) == 1)))
+	if (ironman_empty_levels || (empty_levels && one_in_(EMPTY_LEVEL)))
 	{
 		empty_level = TRUE;
 
@@ -449,7 +452,7 @@ static bool cave_gen(void)
 	}
 
 	/* Possible "destroyed" level */
-	if ((p_ptr->depth > 15) && (randint0(DUN_DEST) == 0) && (small_levels))
+	if ((p_ptr->depth > 15) && one_in_(DUN_DEST) && (small_levels))
 	{
 		destroyed = TRUE;
 
@@ -458,7 +461,7 @@ static bool cave_gen(void)
 	}
 
 	/* Make a lake some of the time */
-	if ((randint0(LAKE_LEVEL) == 0) && !empty_level && !destroyed && terrain_streams)
+	if (one_in_(LAKE_LEVEL) && !empty_level && !destroyed && terrain_streams)
 	{
 		/* Lake of Water */
 		if (p_ptr->depth > 52) laketype = LAKE_WATER;
@@ -474,7 +477,7 @@ static bool cave_gen(void)
 		}
 	}
 
-	if ((randint0(DUN_CAV1/(p_ptr->depth + DUN_CAV2)) == 0) && !empty_level &&
+	if (one_in_(DUN_CAV1/(p_ptr->depth + DUN_CAV2)) && !empty_level &&
 	    (laketype == 0) && !destroyed && (p_ptr->depth >= MIN_CAVERN))
 	{
 		cavern = TRUE;
@@ -510,7 +513,7 @@ static bool cave_gen(void)
 
 	/* No rooms yet */
 	dun->cent_n = 0;
-
+	
 	/* Build some rooms */
 	for (i = 0; i < dun_rooms; i++)
 	{
@@ -634,7 +637,7 @@ static bool cave_gen(void)
 	/* Make a hole in the dungeon roof sometimes at level 1 */
 	if ((p_ptr->depth == 1) && terrain_streams)
 	{
-		while (randint1(DUN_MOS_DEN) == 1)
+		while (one_in_(DUN_MOS_DEN))
 		{
 			place_trees(rand_range(min_wid + 1, max_wid - 2),
 				 rand_range(min_hgt + 1, max_hgt - 2));
@@ -645,10 +648,10 @@ static bool cave_gen(void)
 	if (destroyed) destroy_level();
 
 	/* Hack -- Add some rivers */
-	if ((randint1(3) == 1) && (randint1(p_ptr->depth) > 5) && terrain_streams)
+	if (one_in_(3) && (randint1(p_ptr->depth) > 5) && terrain_streams)
 	{
 	 	/* Choose water or lava */
-		if (randint1(MAX_DEPTH * 2) - 1 > p_ptr->depth)
+		if (randint0(MAX_DEPTH * 2) > p_ptr->depth)
 		{
 			feat1 = FEAT_DEEP_WATER;
 			feat2 = FEAT_SHAL_WATER;
@@ -737,7 +740,7 @@ static bool cave_gen(void)
 		/* Connect the room to the previous room */
 #ifdef PILLAR_TUNNELS
 
-		if ((randint1(20) > p_ptr->depth) && (randint1(100) < 25))
+		if ((randint1(20) > p_ptr->depth) && one_in_(4))
 		{
 			/* make catacomb-like tunnel */
 			build_tunnel2(dun->cent[i].x, dun->cent[i].y, x, y, 3, 30);
@@ -907,7 +910,6 @@ static bool cave_gen(void)
 		}
 	}
 
-
 	/* Basic "amount" */
 	k = (p_ptr->depth / 3);
 	if (k > 10) k = 10;
@@ -959,7 +961,7 @@ static bool cave_gen(void)
 		alloc_object(ALLOC_SET_BOTH, ALLOC_TYP_INVIS, randnor(DUN_AMT_INVIS, 3));
 	}
 
-	if (empty_level && ((randint1(DARK_EMPTY) != 1) || (randint1(100) > p_ptr->depth)))
+	if (empty_level && (!one_in_(DARK_EMPTY) || (randint1(100) > p_ptr->depth)))
 	{
 		/* Lite the cave */
 		for (y = min_hgt; y < max_hgt; y++)
@@ -970,7 +972,7 @@ static bool cave_gen(void)
 			}
 		}
 	}
-
+	
 	/* Determine the character location */
 	if (!new_player_spot())
 		return FALSE;
@@ -978,40 +980,6 @@ static bool cave_gen(void)
 	return TRUE;
 }
 
-
-#if 0
-
-/*
- * Generate a quest level
- */
-static void quest_gen(void)
-{
-	int x, y;
-
-
-	/* Start with perm walls */
-	for (y = min_hgt; y < max_hgt; y++)
-	{
-		for (x = min_wid; x < max_wid; x++)
-		{
-			cave[y][x].feat = FEAT_PERM_SOLID;
-		}
-	}
-
-	/* Set the quest level */
-	base_level = quest[p_ptr->inside_quest].level;
-	p_ptr->depth = base_level;
-	object_level = base_level;
-	monster_level = base_level;
-
-	/* Prepare allocation table */
-	get_mon_num_prep(get_monster_hook(), NULL);
-
-	init_flags = INIT_CREATE_DUNGEON | INIT_ASSIGN;
-	process_dungeon_file("q_info.txt", 0, 0, MAX_HGT, MAX_WID);
-}
-
-#endif
 
 static int map_wid_old = 66;
 
@@ -1083,8 +1051,7 @@ static bool level_gen(cptr *why)
 {
 	int level_height, level_width;
 
-	if (ironman_small_levels ||
-		((randint1(SMALL_LEVEL) == 1) && small_levels))
+	if (ironman_small_levels || (one_in_(SMALL_LEVEL) && small_levels))
 	{
 		if (cheat_room)
 		  msg_print("A 'small' dungeon level.");
@@ -1118,15 +1085,17 @@ static bool level_gen(cptr *why)
 		min_wid = 0;
 		max_wid = MAX_WID;
 	}
-
+	
 	/* Make a dungeon */
 	if (!cave_gen())
 	{
 		*why = "could not place player";
 		return FALSE;
 	}
-	else return TRUE;
+	
+	return TRUE;
 }
+
 
 static byte extract_feeling(void)
 {
@@ -1192,13 +1161,21 @@ void generate_cave(void)
 
 	/* The dungeon is not ready */
 	character_dungeon = FALSE;
-
+	
 	/* Generate */
 	for (num = 0; TRUE; num++)
 	{
 		bool okay = TRUE;
 
 		cptr why = NULL;
+		
+		/* 
+		 * Start with a blank cave
+		 */
+		for (y = 0; y < MAX_HGT; y++)
+		{
+			(void) C_WIPE(cave[y], MAX_WID, cave_type);
+		}
 		
 		/*
 		 * XXX XXX XXX XXX
@@ -1209,34 +1186,7 @@ void generate_cave(void)
 		o_max = 1;
 		m_max = 1;
 
-		/* Start with a blank cave */
-		for (y = 0; y < MAX_HGT; y++)
-		{
-			for (x = 0; x < MAX_WID; x++)
-			{
-				/* No flags */
-				cave[y][x].info = 0;
-
-				/* No features */
-				cave[y][x].feat = 0;
-
-				/* No objects */
-				cave[y][x].o_idx = 0;
-
-				/* No monsters */
-				cave[y][x].m_idx = 0;
-
-				/* No fields */
-				cave[y][x].fld_idx = 0;
-
-#ifdef MONSTER_FLOW
-				/* No flow */
-				cave[y][x].cost = 0;
-				cave[y][x].when = 0;
-#endif /* MONSTER_FLOW */
-			}
-		}
-
+		
 		/* Set the base level */
 		base_level = p_ptr->depth;
 
@@ -1256,17 +1206,7 @@ void generate_cave(void)
 		if (!generate_level_callback(p_ptr->depth))
 #endif /* USE_SCRIPT */
 		{
-
-#if 0
-
-			if (p_ptr->inside_quest)
-			{
-				quest_gen();
-			}
-#endif
-
 			okay = level_gen(&why);
-
 		}
 
 		/* Extract the feeling */
@@ -1330,7 +1270,7 @@ void generate_cave(void)
 		/* Wipe the fields */
 		wipe_f_list();
 	}
-
+	
 	/* The dungeon is ready */
 	character_dungeon = TRUE;
 	
