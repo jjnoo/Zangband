@@ -155,7 +155,7 @@
 #define ALLOW_MACROS
 
 /*
- * OPTION: Allow characteres to be "auto-rolled"
+ * OPTION: Allow characters to be "auto-rolled"
  */
 #define ALLOW_AUTOROLLER
 

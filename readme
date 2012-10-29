@@ -58,7 +58,7 @@ If you have been playing Angband on a different platform, or with an older
 version of Angband, it may be possible to "upgrade" to Angband 2.8.X, keeping
 your old savefiles, high score list, and other files, instead of starting over.
 
-Angband 2.8.X uses a platform independant file format for the binary files
+Angband 2.8.X uses a platform independent file format for the binary files
 that store information about games in progress, known as "savefiles".  Also,
 Angband 2.8.X is able to translate savefiles from any version of Angband from
 Angband 2.5.1 on.  Unfortunately, pre-2.5.1 savefiles are not usable, since
@@ -71,14 +71,14 @@ or "NNN" where "UUU" is the userid of the player (on "multiuser" systems),
 and "NNN" is the name of the "character" in the savefile.  Note that only
 "multiuser" platforms use the "UUU.NNN" form, and the "period" is required.
 
-Angband 2.8.X uses a platform independant (?) file format for the binary
+Angband 2.8.X uses a platform independent (?) file format for the binary
 file used to store the high score list.  This file may be moved between
 platforms (if needed) or copied from older versions (Angband 2.7.4 or later).
 Angband 2.8.X uses a high score file called "scores.raw", which is kept in
 the "lib/apex" directory.  Older versions kept the "scores.raw" file in the
 "lib/data" directory, along with several other version specific files.
 
-Angband 2.8.X uses a platform independant file format for the ascii files
+Angband 2.8.X uses a platform independent file format for the ascii files
 used to store information about dead players, which is used to help create
 "player ghosts" in the dungeon.  If necessary, these files, which are kept
 in the "lib/bone" directory, may be copied from older versions, as long as

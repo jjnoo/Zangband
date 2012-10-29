@@ -1271,12 +1271,12 @@ void test_field_data_integrity(void)
 
 				if (_this_f_idx > fld_max)
 				{
-					msgf("Field index inconsistancy.");
+					msgf("Field index inconsistency.");
 				}
 
 				if ((f_ptr->fy != j) || (f_ptr->fx != i))
 				{
-					msgf("Field location inconsistancy.");
+					msgf("Field location inconsistency.");
 					msgf("Field x, cave x,%d,%d", f_ptr->fx, i);
 					msgf("Field y, cave y,%d,%d", f_ptr->fy, j);
 				}

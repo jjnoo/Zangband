@@ -1513,12 +1513,12 @@ void test_mon_wild_integrity(void)
 
 			if (c_ptr->m_idx > m_max)
 			{
-				msgf("Monster index inconsistancy.");
+				msgf("Monster index inconsistency.");
 			}
 
 			if ((m_ptr->fy != j) || (m_ptr->fx != i))
 			{
-				msgf("Monster location inconsistancy.");
+				msgf("Monster location inconsistency.");
 				msgf("Monster x, cave x,%d,%d", m_ptr->fx, i);
 				msgf("Monster y, cave y,%d,%d", m_ptr->fy, j);
 			}

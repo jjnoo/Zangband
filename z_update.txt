@@ -457,9 +457,9 @@ Changes in Zangband 2.7.5pre1:
 
 2004-10-15 17:51  siemelink
 
-	* src/zborg7.c: Yet another rewrite of the enchant weaopn and
+	* src/zborg7.c: Yet another rewrite of the enchant weapon and
 	armour routines.  This the aim was to let the borg always read the
-	scroll and cast spells onyl for a while.  There were put together
+	scroll and cast spells only for a while.  There were put together
 	and that prevented the borg from reading scrolls when it is in the
 	wilderness for a long time.
 
@@ -769,7 +769,7 @@ Changes in Zangband 2.7.5pre1:
 2004-09-27 10:39  siemelink
 
 	* src/zborg4.c: Allow the borg to wear exp_draining items when
-	hehas reached lvl 50.
+	he has reached lvl 50.
 
 2004-09-27 10:38  siemelink
 
@@ -784,7 +784,7 @@ Changes in Zangband 2.7.5pre1:
 
 2004-09-24 17:06  siemelink
 
-	* src/zborg5.c: use borg_test_bad_curse to edcrease value on the
+	* src/zborg5.c: use borg_test_bad_curse to decrease value on the
 	equipment when the borg wears an item with such a curse
 	inappropriately.
 
@@ -1834,7 +1834,7 @@ Zangband 2.7.2:
   of having ones calculated as if they are on level zero.
 - Fixed the vanilla town option so it doesn't crash when the town is
   made.
-- Get rid of inconsistancy of colouring between charging and
+- Get rid of inconsistency of colouring between charging and
   fully charged rods.
 - Jungle no longer makes running extremely annoying.
 - Immobile monsters don't say they are fleeing.
@@ -2644,7 +2644,7 @@ ZAngband 2.5.2:
  with the normal behaviour of the game.
 -Chaos warriors are now initialised properly with the point-based
  birth system.
--Fixed inconsistancy between monster-monster and monster-player spells.
+-Fixed inconsistency between monster-monster and monster-player spells.
 -Fixed the weaponmaster code.  (The building isn't used though.)
 -Updated makefiles for CygWin and LCC and removed unused parts of the
  source code.

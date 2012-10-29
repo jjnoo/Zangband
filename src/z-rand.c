@@ -146,7 +146,12 @@ s32b Rand_div(u32b m)
 
 			/* Mutate a 28-bit "random" number */
 			r = ((r >> 4) & 0x0FFFFFFF) / n;
-
+			
+			/*[JJ]
+				There is something wrong with this random
+				generation method - r ALWAYS equals 0. 
+			*/
+		
 			/* Done */
 			if (r < m) break;
 		}

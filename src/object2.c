@@ -4488,7 +4488,7 @@ s16b *look_up_list(object_type *o_ptr)
 		OBJ_ITT_END;
 	}
 
-	/* Failure - the object is inconsistant */
+	/* Failure - the object is inconsistent */
 	quit("Failed to look up object.");
 	return (NULL);
 }

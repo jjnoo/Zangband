@@ -291,7 +291,7 @@ Map remembers all perma-lit grids    [view_perma_grids]
     of sight, but this is better accomplished by the "view_bright_lite"
     option.  Note that any non-floor grids which is seen by the player
     are always memorized, and "object" which is seen by the player is
-    memorized independantly from the memorization of the grid itself.
+    memorized independently from the memorization of the grid itself.
 
 ***** <view_torch_grids>
 Map remembers all torch-lit grids    [view_torch_grids]

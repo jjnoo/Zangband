@@ -45,7 +45,7 @@
 
 # Version stamp (required)
 
-V:2.7.5
+V:2.7.6
 
 
 # The Phial of Galadriel

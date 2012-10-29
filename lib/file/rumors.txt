@@ -610,7 +610,7 @@ Being hit by Cold breathes while carrying potions might speed and heal foes!
 You'll rarely get a chance to fight Fiona down and off, she loves her jumpiness!
 Why are Poison Resistance rings higher priced than even Disenchantment rings?
 Are there any cumulative effects by adding another means of resistance? Well?
-IF there are no free places around you, the worst summoning will not itch you.
+If there are no free places around you, the worst summoning will not itch you.
 Summoners may summon ethereal beings even when you are cornered.
 You can win against the ever-aware quylthulgs by blocking their lines of sight.
 Any hounds are disastrous to containment by Door Building. Extinct them quickly!

@@ -1,7 +1,7 @@
 
 
                              **********************
-                             **  ZAngband a.b.c  **
+                             **  Zangband a.b.c  **
                              **********************
 
               Based on Moria:    Copyright (c) 1985 Robert Alan Koeneke
@@ -11,7 +11,8 @@
 
            Old Zangband code:    (Mr) Topi Ylinen < topiy@luukku.com >
            New Zangband code:    Robert Ruehlmann < rr9@angband.org >
-        ZAngband 2.3.0 - ???:    The ZAngband DevTeam
+      ZAngband 2.3.0 - 2.7.5:    The ZAngband DevTeam
+              Zangband 2.7.6:    JJ Mifsud < jj@jjnoo.com >
 
           Visit the ZAngband Homepage at "http://www.zangband.org/"
 

@@ -120,9 +120,9 @@ makefile: configure makefile.in
 	$(CONFIGURE)
 	
 configure: configure.in
-	aclocal
-	autoheader
-	autoconf
+	#aclocal
+	#autoheader
+	#autoconf
 
 dirs:
 	-mkdir $(DESTDIR)
@@ -229,7 +229,7 @@ test:
 	fi
 
 configure.in: .version
-	cat configure.in | sed -e "s/AC_INIT.*$$/AC_INIT\(Zangband,\ `cat .version`,\ bugs@zangband.org\)/" > configure.new
+	cat configure.in | sed -e "s/AC_INIT.*$$/AC_INIT\(Zangband,\ `cat .version`,\ jj@jjnoo.com\)/" > configure.new
 	mv configure.new configure.in
 		
 # Test to see that all source files are in the other makefiles.

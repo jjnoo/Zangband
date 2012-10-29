@@ -13,10 +13,10 @@
 
 CC_AUX := gcc
 
-CFLAGS := -Wsign-compare -Wnested-externs -Wundef -Wuninitialized -Wunused -Wswitch -Wreturn-type -Wsequence-point -Wparentheses -Wimplicit -Wchar-subscripts -Wredundant-decls -Wstrict-prototypes -Waggregate-return -Wbad-function-cast -Wpointer-arith -Wwrite-strings -Wno-long-long -Wmissing-declarations -Wmissing-prototypes -Wall -W -pedantic -g -O2 -I/usr/include/gtk-1.2 -I/usr/include/glib-1.2 -I/usr/lib/glib/include -I/usr/X11R6/include -DHAVE_CONFIG_H
-CPPFLAGS := 
-LIBS := -lz -lrpcsvc -lbsd -ltk8.4 -ltcl8.4 -lncurses -lXaw -lICE -lXpm -lSM -lXt -lXmu -lXm -lXext 
-LDFLAGS :=  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm
+CFLAGS := -Wsign-compare -Wdeclaration-after-statement -Wnested-externs -Wundef -Wuninitialized -Wunused -Wswitch -Wreturn-type -Wsequence-point -Wparentheses -Wimplicit -Wchar-subscripts -Wredundant-decls -Wstrict-prototypes -Waggregate-return -Wbad-function-cast -Wpointer-arith -Wwrite-strings -Wno-long-long -Wmissing-declarations -Wmissing-prototypes -Wall -W -pedantic -g -O2 -DHAVE_CONFIG_H
+CPPFLAGS := -INONE 
+LIBS := -lz -lrpcsvc -lncurses 
+LDFLAGS :=  -LNONE
 
 prefix = /usr/local
 exec_prefix = ${prefix}
@@ -54,7 +54,7 @@ define CONFIGURE
 endef
 
 cygwin = 
-TK_PORT = y
+TK_PORT = 
 
 # subdir = $(dir $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))
 subdir = 
@@ -120,9 +120,9 @@ makefile: configure makefile.in
 	$(CONFIGURE)
 	
 configure: configure.in
-	aclocal
-	autoheader
-	autoconf
+	#aclocal
+	#autoheader
+	#autoconf
 
 dirs:
 	-mkdir $(DESTDIR)
@@ -229,7 +229,7 @@ test:
 	fi
 
 configure.in: .version
-	cat configure.in | sed -e "s/AC_INIT.*$$/AC_INIT\(Zangband,\ `cat .version`,\ bugs@zangband.org\)/" > configure.new
+	cat configure.in | sed -e "s/AC_INIT.*$$/AC_INIT\(Zangband,\ `cat .version`,\ jj@jjnoo.com\)/" > configure.new
 	mv configure.new configure.in
 		
 # Test to see that all source files are in the other makefiles.

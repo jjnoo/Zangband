@@ -590,6 +590,10 @@ int main(int argc, char *argv[])
 	/* Gtk and Tk initialise earlier */
 	if (!(streq(ANGBAND_SYS, "gtk") || streq(ANGBAND_SYS, "tnb")))
 	{
+		/*
+			[JJ] Good spot to test functions here
+		*/
+		
 		/* Initialize */
 		init_angband();
 	}
